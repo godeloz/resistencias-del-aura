@@ -644,9 +644,12 @@
             }).join('') +
           '</div></div></div>');
       h += seccion('Modo de lectura', '<div class="ed-opciones" role="group" aria-label="Modo de lectura">' +
-        [['scroll', 'Scroll'], ['paginas', 'Páginas'], ['lector', 'Elige el lector']].map(function (m) {
+        // «Automático» necesita el SQL 05 (lo delata el campo «firma» del proyecto)
+        [['scroll', 'Scroll'], ['paginas', 'Páginas']].concat(A().proyecto && 'firma' in A().proyecto ? [['auto', 'Automático']] : []).concat([['lector', 'Elige el lector']]).map(function (m) {
           return '<button type="button" data-modo="' + m[0] + '" aria-pressed="' + (c.modo_lectura === m[0]) + '">' + m[1] + '</button>';
-        }).join('') + '</div>' + (c.tipo === 'apunte' ? '<span class="ed-nota">Los apuntes siempre se leen en scroll</span>' : ''));
+        }).join('') + '</div>' + (c.tipo === 'apunte' ? '<span class="ed-nota">Los apuntes siempre se leen en scroll</span>' :
+          c.modo_lectura === 'auto' ? '<span class="ed-nota">Páginas en el celular y scroll en el computador. El lector puede cambiarlo.</span>' :
+          c.modo_lectura === 'lector' ? '<span class="ed-nota">Usa la lectura por defecto de Apariencia y el lector puede cambiarla.</span>' : ''));
       h += seccion('Relacionados', '<div class="ed-chips">' + st.rel.map(function (id) {
         var x = lista.filter(function (y) { return y.id === id; })[0]; if (!x) return '';
         var v = A().vigente(x), col = RA.colorCuaderno(v, T);

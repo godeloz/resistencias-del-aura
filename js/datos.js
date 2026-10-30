@@ -72,7 +72,7 @@
       }
       if (modo !== 'supabase') return Promise.reject(new Error('sin-config'));
       return Promise.all([
-        sb.from('proyecto').select('titulo,introduccion,autor').eq('id', 1).maybeSingle(),
+        sb.from('proyecto').select('*').eq('id', 1).maybeSingle(),   // «*»: funciona antes y después de correr el SQL 05
         sb.from('apariencia').select('*').eq('id', 1).maybeSingle(),
         sb.from('entradas').select(CAMPOS_LISTA).eq('estado', 'publicado').order('orden', { ascending: true })
       ]).then(function (r) {

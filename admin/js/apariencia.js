@@ -36,7 +36,13 @@
     cargarTodasLasFuentes();
     var P = A().principal;
     var guardada = Object.assign({}, A().apariencia), proyectoG = Object.assign({}, A().proyecto);
-    var ap = Object.assign({}, guardada), pr = { titulo: proyectoG.titulo || '', autor: proyectoG.autor || '', introduccion: proyectoG.introduccion || '' };
+    // Los campos firma, firma_anio y lugar existen desde el SQL 05; antes de correrlo se muestran desactivados.
+    var CON05 = 'firma' in proyectoG, TEXTOS = ['titulo', 'autor', 'introduccion'].concat(CON05 ? ['firma', 'firma_anio', 'lugar'] : []);
+    function textosDe(x) {
+      return { titulo: x.titulo || '', autor: x.autor || '', introduccion: x.introduccion || '',
+        firma: x.firma == null ? 'investigación por entregas' : x.firma, firma_anio: x.firma_anio !== false, lugar: x.lugar == null ? 'Medellín' : x.lugar };
+    }
+    var ap = Object.assign({}, guardada), pr = textosDe(proyectoG);
     var vista = { tam: 'movil', pagina: 'inicio' };
     var primera = (A().entradas || []).filter(function (e) { return e.estado === 'publicado'; })[0];
 
@@ -60,6 +66,11 @@
       h += '<section class="ap-sec"><h2 class="ap-lbl">Textos del inicio</h2>' +
         '<label class="a-campo">Título del proyecto<input type="text" data-pr="titulo" value="' + esc(pr.titulo) + '"></label>' +
         '<label class="a-campo">Autor<input type="text" data-pr="autor" value="' + esc(pr.autor) + '"></label>' +
+        '<label class="a-campo">Línea bajo el título <span class="ap-ayuda">(va después del autor)</span><input type="text" data-pr="firma" value="' + esc(pr.firma) + '" placeholder="investigación por entregas"' + (CON05 ? '' : ' disabled') + '></label>' +
+        '<label class="ap-check"><input type="checkbox" data-pr="firma_anio"' + (pr.firma_anio ? ' checked' : '') + (CON05 ? '' : ' disabled') + '> Agregar al final el año de la última publicación</label>' +
+        '<label class="a-campo">Lugar en el pie de página<input type="text" data-pr="lugar" value="' + esc(pr.lugar) + '" placeholder="Medellín"' + (CON05 ? '' : ' disabled') + '></label>' +
+        '<p class="ed-nota ap-vistazo">Así se verá: <b class="ap-vistazo__firma"></b><br>Pie: <b class="ap-vistazo__pie"></b></p>' +
+        (CON05 ? '' : '<p class="ed-nota ap-falta">Para editar la línea bajo el título y el lugar, corre en Supabase el archivo <code>supabase/05-textos-y-lectura.sql</code> (SQL Editor → pegar → Run) y recarga esta página.</p>') +
         '<label class="a-campo">Introducción <span class="ap-cuenta"></span><textarea rows="5" data-pr="introduccion">' + esc(pr.introduccion) + '</textarea></label></section>';
       h += '<section class="ap-sec"><h2 class="ap-lbl">Grupo de paleta</h2><div class="ap-fila">' + Object.keys(T.paletas).map(function (k) {
         var p = T.paletas[k];
@@ -79,8 +90,8 @@
       h += '<section class="ap-sec ap-dos"><div><h2 class="ap-lbl">Carrusel de portadas</h2><div class="ap-fila">' +
           [['abanico', 'Abanico'], ['recto', 'Recto']].map(function (k) { return '<button type="button" class="ap-op" data-campo="carrusel" data-valor="' + k[0] + '"' + anillo(ap.carrusel === k[0]) + '><b>' + k[1] + '</b></button>'; }).join('') + '</div></div>' +
         '<div><h2 class="ap-lbl">Lectura por defecto</h2><div class="ap-fila">' +
-          [['scroll', 'Scroll'], ['paginas', 'Pasar páginas']].map(function (k) { return '<button type="button" class="ap-op" data-campo="modo_lectura_defecto" data-valor="' + k[0] + '"' + anillo(ap.modo_lectura_defecto === k[0]) + '><b>' + k[1] + '</b></button>'; }).join('') + '</div>' +
-          '<span class="ed-nota">Aplica a las entradas en «Elige el lector»</span></div></section>';
+          [['scroll', 'Scroll', ''], ['paginas', 'Pasar páginas', ''], ['auto', 'Automático', 'páginas en el celular, scroll en el computador']].map(function (k) { return '<button type="button" class="ap-op" data-campo="modo_lectura_defecto" data-valor="' + k[0] + '"' + anillo(ap.modo_lectura_defecto === k[0]) + '><b>' + k[1] + '</b>' + (k[2] ? '<small>' + k[2] + '</small>' : '') + '</button>'; }).join('') + '</div>' +
+          '<span class="ed-nota">Aplica a las entradas en «Elige el lector». El lector puede cambiarlo en el panel «Aa».</span></div></section>';
       h += '<section class="ap-sec ap-dos"><div><h2 class="ap-lbl">Tipografía de títulos</h2><div class="ap-rejilla">' + Object.keys(T.titulos).map(function (k) {
           var f = T.titulos[k];
           return '<button type="button" class="ap-op ap-fuente" data-campo="fuente_titulos" data-valor="' + k + '"' + anillo(ap.fuente_titulos === k) + ' style="font-family:' + f.familia + ';font-weight:' + f.peso + ';text-transform:' + (f.mayus ? 'uppercase' : 'none') + ';font-size:20px">' + NOMBRES.titulos[k] + '</button>';
@@ -94,7 +105,18 @@
       }).join('') + '</div></section>';
       secc.innerHTML = h;
       contarIntro();
+      vistazo();
       estado();
+    }
+    function anioUltimo() {
+      var f = (A().entradas || []).map(function (e) { return e.publicado_en; }).filter(Boolean).sort().pop();
+      return f ? new Date(f).getFullYear() : new Date().getFullYear();
+    }
+    function vistazo() {
+      var a = secc.querySelector('.ap-vistazo__firma'), b = secc.querySelector('.ap-vistazo__pie'); if (!a) return;
+      var partes = [pr.autor.trim(), pr.firma.trim()].filter(Boolean); if (pr.firma_anio) partes.push(anioUltimo());
+      a.textContent = partes.join(' · ') || '(nada)';
+      b.textContent = (pr.titulo.trim() || 'Resistencias del aura') + ' · ' + (pr.lugar.trim() ? pr.lugar.trim() + ', ' : '') + anioUltimo();
     }
 
     function contarIntro() {
@@ -103,7 +125,7 @@
     }
     function hayCambios() {
       return CAMPOS.some(function (k) { return ap[k] !== guardada[k]; }) ||
-        ['titulo', 'autor', 'introduccion'].some(function (k) { return pr[k] !== (proyectoG[k] || ''); });
+        TEXTOS.some(function (k) { return pr[k] !== textosDe(proyectoG)[k]; });
     }
     function estado() {
       var c = hayCambios();
@@ -112,7 +134,10 @@
       P.querySelector('[data-ap="descartar"]').disabled = !c;
     }
     function enviar() {
-      try { marco.contentWindow.postMessage({ tipo: 'ra-prevista', apariencia: ap, proyecto: pr }, '*'); } catch (e) { /* aún cargando */ }
+      [marco, grande && grande.querySelector('iframe')].forEach(function (f) {
+        if (!f) return;
+        try { f.contentWindow.postMessage({ tipo: 'ra-prevista', apariencia: ap, proyecto: pr }, '*'); } catch (e) { /* aún cargando */ }
+      });
     }
     function fondoAdminVivo() {
       var fondo = T.fondosAdmin[ap.fondo_admin] || '#EFEBE1', osc = !RA.esClaro(fondo), r = document.documentElement.style;
@@ -122,22 +147,72 @@
       r.setProperty('--a-suave', osc ? 'rgba(243,240,232,.6)' : 'rgba(29,29,58,.6)');
       r.setProperty('--a-linea', osc ? 'rgba(243,240,232,.2)' : 'rgba(29,29,58,.16)');
     }
+    /* El marco de la barra lateral siempre muestra el móvil (390 px).
+       El iframe va en posición absoluta: así su ancho no empuja la columna. */
     function tamano() {
       P.querySelectorAll('[data-tam]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-tam') === vista.tam); });
-      P.querySelectorAll('[data-pag]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-pag') === vista.pagina); });
-      var ancho = vista.tam === 'movil' ? 390 : 1280, alto = vista.tam === 'movil' ? 760 : 900;
-      var k = Math.min(1, (caja.clientWidth - 4) / ancho);
+      P.querySelectorAll('.ap-vista [data-pag]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-pag') === vista.pagina); });
+      var ancho = 390, alto = 760, disp = caja.clientWidth;
+      var k = Math.min(1, disp / ancho);
       marco.style.width = ancho + 'px'; marco.style.height = alto + 'px';
       marco.style.transform = 'scale(' + k + ')';
-      marco.style.marginLeft = Math.max(0, Math.round((caja.clientWidth - 4 - ancho * k) / 2)) + 'px';
-      caja.style.height = Math.round(alto * k + 4) + 'px';
+      marco.style.left = Math.max(0, Math.round((disp - ancho * k) / 2)) + 'px';
+      caja.style.height = Math.round(alto * k) + 'px';
+      if (grande) ajustarGrande();
     }
+    function hashDe(p) { return p === 'capitulo' && primera ? '#/leer/' + primera.slug : '#/'; }
     function irA(p) {
       vista.pagina = p;
-      try {
-        marco.contentWindow.location.hash = p === 'capitulo' && primera ? '#/leer/' + primera.slug : '#/';
-      } catch (e) { /* nada */ }
+      [marco, grande && grande.querySelector('iframe')].forEach(function (f) {
+        if (!f) return;
+        try { f.contentWindow.location.hash = hashDe(p); } catch (e) { /* nada */ }
+      });
+      if (grande) grande.querySelectorAll('[data-pag]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-pag') === vista.pagina); });
       tamano();
+    }
+
+    /* Vista de escritorio: ocupa toda la ventana, con «Volver a móvil» y «× Cerrar» siempre a la vista */
+    var grande = null;
+    function abrirGrande() {
+      if (grande) return;
+      vista.tam = 'escritorio';
+      grande = document.createElement('div');
+      grande.className = 'ap-grande';
+      grande.setAttribute('role', 'dialog'); grande.setAttribute('aria-modal', 'true'); grande.setAttribute('aria-label', 'Vista previa de escritorio');
+      grande.innerHTML = '<div class="ap-grande__barra"><span class="ap-lbl">Vista previa · escritorio</span>' +
+        '<span class="ed-seg ap-seg" role="group" aria-label="Página"><button type="button" data-pag="inicio">Inicio</button><button type="button" data-pag="capitulo"' + (primera ? '' : ' disabled title="Publica una entrada para verla aquí"') + '>Capítulo</button></span>' +
+        '<button type="button" class="a-boton" data-grande="movil">Volver a móvil</button>' +
+        '<button type="button" class="a-boton a-boton--primario" data-grande="cerrar">× Cerrar</button></div>' +
+        '<div class="ap-grande__caja"><iframe title="Vista previa de escritorio" src="../index.html?prevista=1' + hashDe(vista.pagina) + '"></iframe></div>';
+      document.body.appendChild(grande);
+      document.body.classList.add('ap-grande-abierta');
+      var f = grande.querySelector('iframe');
+      f.addEventListener('load', function () { enviar(); setTimeout(enviar, 400); });
+      grande.querySelectorAll('[data-pag]').forEach(function (b) {
+        b.setAttribute('aria-pressed', b.getAttribute('data-pag') === vista.pagina);
+        b.onclick = function () { irA(b.getAttribute('data-pag')); };
+      });
+      grande.querySelectorAll('[data-grande]').forEach(function (b) { b.onclick = cerrarGrande; });
+      document.addEventListener('keydown', escGrande);
+      ajustarGrande(); tamano();
+      grande.querySelector('[data-grande="cerrar"]').focus();
+    }
+    function ajustarGrande() {
+      var caja2 = grande.querySelector('.ap-grande__caja'), f = grande.querySelector('iframe');
+      var w = caja2.clientWidth, h = caja2.clientHeight, ancho = 1280;
+      var k = Math.min(1, w / ancho);
+      f.style.width = ancho + 'px'; f.style.height = Math.round(h / k) + 'px';
+      f.style.transform = 'scale(' + k + ')';
+      f.style.left = Math.max(0, Math.round((w - ancho * k) / 2)) + 'px';
+    }
+    function escGrande(ev) { if (ev.key === 'Escape') cerrarGrande(); }
+    function cerrarGrande() {
+      if (!grande) return;
+      document.removeEventListener('keydown', escGrande);
+      grande.remove(); grande = null;
+      document.body.classList.remove('ap-grande-abierta');
+      vista.tam = 'movil'; tamano();
+      var b = P.querySelector('[data-tam="escritorio"]'); if (b) b.focus();
     }
 
     marco.addEventListener('load', function () { enviar(); setTimeout(enviar, 400); });
@@ -149,22 +224,24 @@
     });
     secc.addEventListener('input', function (ev) {
       var k = ev.target.getAttribute('data-pr'); if (!k) return;
-      pr[k] = ev.target.value; contarIntro(); estado();
+      pr[k] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; contarIntro(); vistazo(); estado();
       clearTimeout(secc._t); secc._t = setTimeout(enviar, 250);
     });
-    P.querySelectorAll('[data-tam]').forEach(function (b) { b.onclick = function () { vista.tam = b.getAttribute('data-tam'); tamano(); }; });
-    P.querySelectorAll('[data-pag]').forEach(function (b) { b.onclick = function () { irA(b.getAttribute('data-pag')); }; });
+    P.querySelectorAll('[data-tam]').forEach(function (b) { b.onclick = function () { if (b.getAttribute('data-tam') === 'escritorio') abrirGrande(); else cerrarGrande(); }; });
+    P.querySelectorAll('.ap-vista [data-pag]').forEach(function (b) { b.onclick = function () { irA(b.getAttribute('data-pag')); }; });
     P.querySelector('[data-ap="descartar"]').onclick = function () {
       ap = Object.assign({}, guardada);
-      pr = { titulo: proyectoG.titulo || '', autor: proyectoG.autor || '', introduccion: proyectoG.introduccion || '' };
+      pr = textosDe(proyectoG);
       fondoAdminVivo(); pintar(); enviar();
     };
     P.querySelector('[data-ap="publicar"]').onclick = function () {
       var b = this; b.disabled = true; b.textContent = 'Publicando…';
       var campos = {}; CAMPOS.forEach(function (k) { campos[k] = ap[k]; });
-      Promise.all([RA.adm.guardarApariencia(campos), RA.adm.guardarProyecto({ titulo: pr.titulo.trim() || 'Resistencias del aura', autor: pr.autor.trim(), introduccion: pr.introduccion.trim() })])
+      var textos = { titulo: pr.titulo.trim() || 'Resistencias del aura', autor: pr.autor.trim(), introduccion: pr.introduccion.trim() };
+      if (CON05) { textos.firma = pr.firma.trim(); textos.firma_anio = !!pr.firma_anio; textos.lugar = pr.lugar.trim(); }
+      Promise.all([RA.adm.guardarApariencia(campos), RA.adm.guardarProyecto(textos)])
         .then(function (r) {
-          guardada = RA.normalizarApariencia(r[0]); proyectoG = r[1];
+          guardada = RA.normalizarApariencia(r[0]); proyectoG = r[1]; pr = textosDe(proyectoG);
           A().aplicarTemaAdmin(r[0]); A().proyecto = r[1];
           RA.guardado.escribir('apariencia', r[0]);
           b.textContent = 'Publicar cambios'; estado(); ui().aviso('Apariencia publicada');
@@ -173,6 +250,7 @@
     window.addEventListener('resize', tamano);
     A().limpiar = function () {
       window.removeEventListener('resize', tamano);
+      cerrarGrande();
       if (hayCambios()) A().aplicarTemaAdmin(guardada);   // salir sin publicar: el administrador vuelve a lo guardado
     };
     pintar(); tamano();

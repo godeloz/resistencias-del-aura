@@ -53,7 +53,7 @@
     r.fuente_titulos = T.titulos[a.fuente_titulos] ? a.fuente_titulos : d.fuente_titulos;
     r.fuente_texto = T.lectura[a.fuente_texto] ? a.fuente_texto : d.fuente_texto;
     r.patron_defecto = T.patrones.indexOf(a.patron_defecto) >= 0 ? a.patron_defecto : d.patron_defecto;
-    r.modo_lectura_defecto = a.modo_lectura_defecto === 'paginas' ? 'paginas' : 'scroll';
+    r.modo_lectura_defecto = ['paginas', 'auto'].indexOf(a.modo_lectura_defecto) >= 0 ? a.modo_lectura_defecto : 'scroll';
     r.extra = a.extra || {};
     return r;
   };

@@ -9,7 +9,6 @@
 (function () {
   'use strict';
   var RA = window.RA, esc = RA.esc, G = RA.guardado;
-  var LUGAR = 'Medellín';
   /* Dentro de la vista previa de Apariencia (administrador): recibe los cambios sin guardarlos */
   var PREVISTA = /[?&]prevista=1/.test(location.search) && window.parent !== window;
 
@@ -90,8 +89,18 @@
     var f = S.sitio.entradas.map(function (e) { return e.publicado_en; }).filter(Boolean).sort().pop();
     return f ? new Date(f).getFullYear() : new Date().getFullYear();
   }
+  /* Textos editables en Apariencia (SQL 05). Si la base aún no los tiene, se usan los de siempre. */
+  function lugar() { var l = S.sitio.proyecto.lugar; return (l == null ? 'Medellín' : String(l)).trim(); }
+  function firma() {
+    var p = S.sitio.proyecto, f = (p.firma == null ? 'investigación por entregas' : String(p.firma)).trim(), partes = [];
+    if (p.autor) partes.push(p.autor);
+    if (f) partes.push(f);
+    if (p.firma_anio !== false) partes.push(anio());
+    return partes.join(' · ');
+  }
   function pie() {
-    return '<footer class="pie"><span>' + esc(S.sitio.proyecto.titulo) + ' · ' + LUGAR + ', ' + anio() + '</span>' +
+    var l = lugar();
+    return '<footer class="pie"><span>' + esc(S.sitio.proyecto.titulo) + ' · ' + (l ? esc(l) + ', ' : '') + anio() + '</span>' +
       '<a class="acceso" href="#/entrar" aria-label="Acceso del autor"></a></footer>';
   }
 
@@ -138,7 +147,7 @@
         '<section class="heroe">' + anillos +
           '<div class="registro"><h1 class="registro__a">' + tituloHTML + '</h1>' +
           '<span class="registro__b" aria-hidden="true">' + tituloHTML + '</span></div>' +
-          '<p class="firma">' + esc(sitio.proyecto.autor) + (sitio.proyecto.autor ? ' · ' : '') + 'investigación por entregas · ' + anio() + '</p>' +
+          (firma() ? '<p class="firma">' + esc(firma()) + '</p>' : '') +
         '</section>' +
         '<section class="intro">' + (sitio.proyecto.introduccion ? '<p>' + esc(sitio.proyecto.introduccion) + '</p>' : '') +
           (primero ? '<a class="boton" href="#/leer/' + encodeURIComponent(primero.slug) + '">Empezar por ' +
@@ -364,7 +373,14 @@
   function modoDe(e) {
     if (e.tipo === 'apunte') return { modo: 'scroll', fijo: true };
     if (e.modo_lectura === 'scroll' || e.modo_lectura === 'paginas') return { modo: e.modo_lectura, fijo: true };
-    return { modo: S.prefs.modo || S.sitio.apariencia.modo_lectura_defecto, fijo: false };
+    // «auto» (en la entrada o por defecto en el sitio): páginas en el celular, scroll en el computador.
+    // Si el lector ya eligió un modo en el panel «Aa», se respeta su elección.
+    var base = e.modo_lectura === 'auto' ? 'auto' : S.sitio.apariencia.modo_lectura_defecto;
+    return { modo: S.prefs.modo || (base === 'auto' ? (esMovil() ? 'paginas' : 'scroll') : base), fijo: false };
+  }
+  function esMovil() {
+    var mm = window.matchMedia;
+    return !!mm && (mm('(max-width: 820px)').matches || mm('(pointer: coarse) and (max-width: 1100px)').matches);
   }
 
   function pintarEntrada(slug, restaurar, vistaId) {
