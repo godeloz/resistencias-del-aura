@@ -255,8 +255,13 @@ img { max-width: 100%; }
   font-family: var(--f-titulos); font-weight: var(--w-titulos); color: var(--tA); text-transform: var(--case-titulos);
 }
 .capitular__b { position: absolute; left: 4px; top: 3px; opacity: .8; color: var(--tB); mix-blend-mode: var(--mezcla); }
-.cuerpo blockquote { margin: 1.6em 0; padding: 0 0 0 1.1em; border-left: 3px solid var(--tA); font-size: .93em; }
-.cuerpo blockquote p:last-child { margin-bottom: 0; }
+/* ── Citas (A-05): ocho estilos. El color es el del cuaderno (--tc, --tc2 desde lectura.js) ── */
+.cuerpo blockquote { margin: 1.6em 0; padding: 0 0 0 1.1em; border-left: 4px solid var(--tc, var(--tA)); font-size: .93em; }
+.cuerpo blockquote p:last-child, .cuerpo blockquote p:has(+ cite) { margin-bottom: 0; }
+.cuerpo blockquote cite { display: block; margin-top: .7em; font-style: normal; font-family: var(--f-ui); font-size: 13px; letter-spacing: .02em; opacity: .8; hyphens: manual; }
+.cuerpo blockquote cite a { text-decoration-color: var(--tc, var(--tA)); }
+.cuerpo blockquote cite a[href^="#/referentes/r/"]::after { content: ' ↗'; font-size: .9em; }
+/* A · Destacada en bloque */
 .cuerpo blockquote.destacada {
   margin: 56px 0; padding: 34px 36px; border: 0; font-size: 1em;
   background: var(--acento); color: var(--acento-texto); box-shadow: 8px 8px 0 var(--sombra);
@@ -265,7 +270,54 @@ img { max-width: 100%; }
   margin: 0; font-size: 34px; line-height: 1.12; font-family: var(--f-titulos);
   font-weight: var(--w2-titulos); text-transform: var(--case-titulos); hyphens: manual;
 }
-.cuerpo blockquote.destacada cite { display: block; margin-top: 14px; font-style: italic; font-size: 17px; }
+.cuerpo blockquote.destacada cite { margin-top: 14px; font-family: var(--f-texto); font-style: italic; font-size: 17px; letter-spacing: 0; opacity: 1; }
+/* B · Grande con comillas */
+.cuerpo blockquote.comillas { position: relative; margin: 2.4em 0; padding: 1.5em 0 0; border: 0; font-size: 1em; }
+.cuerpo blockquote.comillas::before {
+  content: '\201C'; position: absolute; left: -.08em; top: -.18em; font-family: var(--f-texto); font-size: 5em; line-height: 1; color: var(--tc, var(--tA));
+}
+.cuerpo blockquote.comillas p { font-style: italic; font-size: 1.36em; line-height: 1.3; hyphens: manual; }
+.cuerpo blockquote.comillas cite { font-weight: 600; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--tc, var(--tA)); opacity: 1; }
+/* C · Epígrafe */
+.cuerpo blockquote.epigrafe { margin: 1.4em 0 2.4em auto; max-width: 62%; padding: 0; border: 0; text-align: right; font-size: .82em; line-height: 1.5; }
+.cuerpo blockquote.epigrafe p { font-style: italic; margin: 0 0 .4em; }
+.cuerpo blockquote.epigrafe cite { font-family: var(--f-texto); font-size: 1em; letter-spacing: 0; opacity: 1; }
+.cuerpo blockquote.epigrafe cite::before { content: '— '; }
+/* D · Cita en bloque: la regla general de arriba */
+/* E · En dos tintas (registro) */
+.cuerpo blockquote.registro { margin: 2.2em 0; padding: 0; border: 0; text-align: center; font-size: 1em; }
+.cuerpo blockquote.registro p {
+  font-family: var(--f-titulos); font-weight: var(--w-titulos); text-transform: var(--case-titulos); hyphens: manual;
+  font-size: 1.5em; line-height: 1.1; color: var(--tc, var(--tA)); text-shadow: 3px 2px 0 var(--tc2, var(--tB));
+}
+.cuerpo blockquote.registro cite { font-family: var(--f-texto); font-style: italic; font-size: 15px; letter-spacing: 0; }
+/* F · Testimonio */
+.cuerpo blockquote.testimonio { display: grid; grid-template-columns: 42px 1fr; column-gap: 16px; margin: 2em 0; padding: 0; border: 0; font-size: .97em; }
+.cuerpo blockquote.testimonio > * { grid-column: 2; }
+.cuerpo blockquote.testimonio .testimonio__iniciales {
+  grid-column: 1; grid-row: 1 / span 9; align-self: start; width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; background: var(--tc, var(--tA)); color: var(--tc-sobre, #fff);
+  font-family: var(--f-ui); font-weight: 600; font-size: 15px; letter-spacing: .02em;
+}
+.cuerpo blockquote.testimonio cite { order: -1; margin: 0 0 .35em; font-weight: 600; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--tc, var(--tA)); opacity: 1; }
+/* G · Papel pegado */
+.cuerpo blockquote.papel {
+  position: relative; margin: 2.6em auto; max-width: 88%; padding: 1.2em 1.3em 1em; border: 0; transform: rotate(-1.1deg);
+  background: var(--papel); color: var(--tinta); font-size: .95em;
+  box-shadow: 0 0 0 1px rgba(20,20,40,.1), 3px 4px 0 rgba(20,20,40,.08);
+  background-image: repeating-linear-gradient(180deg, transparent 0 1.55em, rgba(20,20,40,.06) 1.55em calc(1.55em + 1px));
+}
+.cuerpo blockquote.papel::before {
+  content: ''; position: absolute; top: -11px; left: 42%; width: 76px; height: 22px; transform: rotate(3deg);
+  background: var(--tc, var(--tA)); opacity: .5;
+}
+.cuerpo blockquote.papel p { font-style: italic; line-height: 1.55; }
+.cuerpo blockquote.papel cite { text-align: right; font-family: var(--f-texto); font-size: 14px; }
+/* H · Entre filetes */
+.cuerpo blockquote.filetes { margin: 2.2em auto; max-width: 86%; padding: 1.1em 0; border: 0; border-top: 2px solid var(--tc, var(--tA)); border-bottom: 2px solid var(--tc, var(--tA)); text-align: center; font-size: 1em; }
+.cuerpo blockquote.filetes p { font-size: 1.08em; line-height: 1.45; }
+.cuerpo blockquote.filetes cite { font-weight: 600; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; }
+.tema-oscuro .cuerpo blockquote.papel { filter: brightness(.92); }
 .cuerpo hr {
   border: 0; width: 50px; height: 10px; margin: 52px auto;
   background: linear-gradient(90deg, var(--tA) 0 10px, transparent 10px 20px, var(--tB) 20px 30px, transparent 30px 40px, var(--apunte) 40px 50px);
@@ -332,27 +384,56 @@ img { max-width: 100%; }
 .aviso-marcador button { border: 0; background: var(--acento); color: var(--acento-texto); font-weight: 600; padding: 8px 12px; min-height: 36px; cursor: pointer; }
 .aviso-marcador .cerrar { background: transparent; color: var(--tinta); font-size: 18px; padding: 4px 8px; }
 
-/* ── Apunte ───────────────────────────────────────────────────────── */
-.pag-entrada.es-apunte { background: var(--apunte); color: var(--tinta); position: relative; --pc: rgba(20,20,40,.14); }
-.es-apunte > .pat { z-index: 0; }
-.es-apunte .libro, .es-apunte .pie { position: relative; z-index: 1; }
-.es-apunte .barra { background: var(--apunte); border-bottom-color: var(--tinta); }
-.es-apunte .tintas a[aria-current="page"] { background-color: var(--tinta) !important; } /* su tinta no se pierde sobre el amarillo */
-.es-apunte .apunte__circulo { position: absolute; right: -70px; top: -50px; width: 240px; height: 240px; border-radius: 50%; mix-blend-mode: multiply; pointer-events: none; }
-.ficha {
-  position: relative; max-width: 720px; width: calc(100% - 2 * var(--margen)); margin: 120px auto 0;
-  background: var(--papel); padding: 34px 40px 28px; box-shadow: 6px 6px 0 var(--tinta);
+/* ── Apunte: ficha de archivo (A-06) ──────────────────────────────── */
+.ficha { position: relative; max-width: 760px; width: calc(100% - 2 * var(--margen)); margin: 96px auto 0; padding-top: 30px; color: var(--tinta); }
+.ficha__pestana {
+  position: absolute; left: 22px; top: 0; height: 32px; padding: 7px 18px 0; border-radius: 8px 8px 0 0;
+  font-family: var(--f-ui); font-weight: 600; font-size: 13px; letter-spacing: .12em; color: var(--tinta);
 }
+.ficha__carton { position: relative; padding: 34px 42px 30px; border-radius: 2px 12px 12px 12px; box-shadow: 0 18px 30px -24px rgba(0,0,0,.45); }
+.ficha__carton > :not(.pat) { position: relative; }
+.ficha__carton .antetitulo { opacity: .75; }
 .ficha__titulo {
-  margin: 10px 0 0; font-family: var(--f-titulos); font-weight: var(--w-titulos); text-transform: var(--case-titulos);
+  margin: 10px 0 0; max-width: 88%; font-family: var(--f-titulos); font-weight: var(--w-titulos); text-transform: var(--case-titulos);
   font-size: clamp(28px, 4vw, 44px); line-height: .98;
 }
-.ficha .cuerpo { padding: 18px 0 0; max-width: none; }
+.ficha__filete { display: block; height: 2px; margin: 18px 0 0; background: var(--tA); }
+.ficha .cuerpo { padding: 22px 0 0; max-width: none; }
 .ficha .cuerpo p:last-child { margin-bottom: 0; }
+.tema-oscuro .ficha__carton, .tema-oscuro .ficha__pestana { filter: brightness(.92); }
 .apunte__origen { position: relative; display: inline-block; margin-top: 22px; font-family: var(--f-ui); font-weight: 600; font-size: 14px; text-decoration: none; padding: 10px 0; }
-.apunte__origen-envoltura { max-width: 720px; width: calc(100% - 2 * var(--margen)); margin: 0 auto; }
+.apunte__origen-envoltura { max-width: 760px; width: calc(100% - 2 * var(--margen)); margin: 0 auto; }
 .es-apunte .fin { padding-top: 40px; }
-.es-apunte .pie { border-top-color: var(--tinta); }
+
+/* Sello (categoría del apunte) */
+.sello {
+  display: inline-flex; align-items: center; justify-content: center; text-align: center;
+  border: 2px solid var(--sello); color: var(--sello); border-radius: 50%; transform: rotate(-11deg);
+  font-family: var(--f-ui); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; line-height: 1.15;
+  opacity: .88; padding: 6px; overflow-wrap: anywhere; hyphens: none;
+}
+.sello--ficha { position: absolute !important; right: 22px; top: 18px; width: 84px; height: 84px; font-size: 10px; }
+.sello--portada { position: absolute; right: 16px; top: 16px; width: 70px; height: 70px; font-size: 8.5px; }
+@media (max-width: 720px) { .sello--ficha { width: 64px; height: 64px; font-size: 8px; right: 12px; top: 12px; } }
+
+/* Portada de apunte en el carrusel: la misma ficha */
+.cuaderno--ficha { overflow: visible; box-shadow: none; border-radius: 0; }
+.cuaderno--ficha .cuaderno__lienzo { overflow: visible; }
+.ficha-pestana {
+  position: absolute; left: 18px; top: 0; height: 30px; padding: 7px 16px 0; border-radius: 8px 8px 0 0;
+  font-family: var(--f-ui); font-weight: 600; font-size: 13px; letter-spacing: .12em; color: var(--tinta);
+}
+.ficha-carton {
+  position: absolute; left: 0; right: 0; top: 28px; bottom: 0; overflow: hidden; border-radius: 2px 12px 12px 12px;
+  box-shadow: 0 20px 34px -22px rgba(0,0,0,.6); color: var(--tinta);
+}
+.ficha-carton__textos { position: absolute; left: 22px; right: 20px; bottom: 22px; display: flex; flex-direction: column; gap: 8px; }
+.ficha-carton__textos .antetitulo { opacity: .75; }
+.ficha-carton__filete { display: block; height: 2px; background: var(--tA); }
+.cuaderno--ficha .cuaderno__titulo { font-size: 24px; }
+.tema-oscuro .cuaderno--ficha .ficha-carton, .tema-oscuro .cuaderno--ficha .ficha-pestana { filter: brightness(.92); }
+.mini--ficha { border-radius: 2px 6px 6px 6px; }
+.mini__pestana { position: absolute; left: 5px; bottom: 5px; font-family: var(--f-ui); font-weight: 600; font-size: 10px; letter-spacing: .06em; color: var(--tinta); }
 
 /* ── Panel de ajustes ─────────────────────────────────────────────── */
 .velo { position: fixed; inset: 0; z-index: 40; background: rgba(29,29,58,.35); }
@@ -400,7 +481,9 @@ img { max-width: 100%; }
 .modo-paginas .cuerpo { padding: 0; max-width: none; margin: 0; }
 .modo-paginas .cuerpo figure { break-inside: avoid; margin: 1.4em 0; }
 .modo-paginas .cuerpo figure img { max-height: 60vh; width: auto; max-width: 100%; margin: 0 auto; }
-.modo-paginas .cuerpo blockquote.destacada { break-inside: avoid; margin: 1.6em 8px 1.6em 0; }
+.modo-paginas .cuerpo blockquote { break-inside: avoid; }
+.modo-paginas .cuerpo blockquote.destacada { margin: 1.6em 8px 1.6em 0; }
+.modo-paginas .cuerpo blockquote.papel { margin: 1.8em auto; }
 .modo-paginas .final { break-before: column; }
 .modo-paginas .fin { padding-top: 0; }
 .modo-paginas .siguiente { padding: 28px 24px; }
@@ -482,8 +565,13 @@ img { max-width: 100%; }
   .siguiente__titulo { font-size: 38px; }
   .relacionados { padding: 44px 22px 20px; }
 
-  .ficha { margin-top: 80px; padding: 22px 22px 20px; box-shadow: 5px 5px 0 var(--tinta); }
+  .ficha { margin-top: 56px; }
+  .ficha__carton { padding: 26px 22px 22px; }
   .ficha__titulo { font-size: 28px; }
+  .cuerpo blockquote.comillas p { font-size: 1.22em; }
+  .cuerpo blockquote.epigrafe { max-width: 82%; }
+  .cuerpo blockquote.papel { max-width: 96%; }
+  .cuerpo blockquote.filetes { max-width: 100%; }
 
   .ajustes { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 88vh; border-radius: 26px 26px 0 0; border-width: 2px 0 0; padding: 12px 22px 28px; padding-bottom: max(28px, env(safe-area-inset-bottom)); box-shadow: none; }
   .ajustes__asa { display: block; }
@@ -501,7 +589,6 @@ mark.pasaje {
   background: linear-gradient(to top, var(--resalte) 0 42%, transparent 42%);
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
-.es-apunte mark.pasaje { --resalte: var(--resalte-apunte); }
 mark.pasaje:hover { background: linear-gradient(to top, var(--resalte) 0 100%, transparent 100%); }
 .pasaje-cuenta {
   display: inline-flex; align-items: center; gap: 1px; vertical-align: .1em; margin: 0 2px 0 4px;
@@ -602,3 +689,85 @@ mark.pasaje:hover { background: linear-gradient(to top, var(--resalte) 0 100%, t
   .abanico .cuaderno, .modo-paginas .paginas, .tintas a { transition: none; }
   .barra-reacciones, .pop-reacciones { animation: none; }
 }
+
+/* ══ NOTAS AL PIE (A-03) ══════════════════════════════════════════════ */
+sup.np { line-height: 0; vertical-align: baseline; font-size: inherit; position: relative; }
+.np-marca {
+  display: inline-flex; align-items: center; justify-content: center; vertical-align: .42em; margin: 0 .04em 0 .06em;
+  width: .92em; height: .92em; min-width: 17px; min-height: 17px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--tc, var(--tA)); cursor: pointer; line-height: 0; position: relative;
+  transition: background .2s, color .2s; text-indent: 0; hyphens: none;
+}
+.np-marca::after { content: ''; position: absolute; inset: -12px; }   /* área táctil */
+.np-marca svg { width: .64em; height: .64em; min-width: 12px; min-height: 12px; display: block; }
+.np-marca--vuelta { color: var(--tc2, var(--tB)); }
+.np-marca--num { width: auto; min-width: 1.1em; padding: 0 .18em; border-radius: 9px; }
+.np-num { font-family: var(--f-ui); font-weight: 600; font-size: .62em; line-height: 1; }
+.np-marca.abierta { background: var(--tc, var(--tA)); color: var(--tc-sobre, #fff); }
+.np-marca:focus-visible { outline-offset: 2px; }
+
+/* Lista plegada al final */
+.notas-final { max-width: var(--columna); margin: 8px auto 30px; padding: 0 var(--margen); font-family: var(--f-ui); }
+.modo-paginas .notas-final, .ficha .notas-final { padding: 0; margin: 18px 0 24px; }
+.notas-final summary {
+  list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-top: 1px solid var(--linea); font-weight: 600; font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+}
+.notas-final summary::-webkit-details-marker { display: none; }
+.notas-final summary::after { content: '+'; font-size: 18px; font-weight: 400; opacity: .7; }
+.notas-final[open] summary::after { content: '–'; }
+.notas-final ol { list-style: none; margin: 4px 0 0; padding: 0; font-family: var(--f-texto); font-size: 15px; line-height: 1.5; }
+.notas-final li { display: flex; gap: 10px; margin: 0 0 12px; }
+.notas-final__marca { flex: none; padding-top: 4px; color: var(--tc, var(--tA)); }
+.notas-final__marca.np-marca--vuelta { color: var(--tc2, var(--tB)); }
+.notas-final__marca svg { display: block; }
+.notas-final__marca .np-num { font-size: 12px; }
+.notas-final__texto p { margin: 0 0 .5em; }
+.notas-final__texto p:last-child { margin: 0; }
+
+/* La hoja que sube desde abajo (notas y referentes de las citas) */
+.hoja-nota {
+  position: fixed; z-index: 46; left: 50%; bottom: 0; width: min(var(--columna), 100%); max-height: 60vh; max-height: 60dvh;
+  display: flex; flex-direction: column; transform: translate(-50%, 105%); visibility: hidden;
+  transition: transform .32s var(--curva), visibility 0s linear .32s;
+  background-color: var(--hoja-fondo); color: var(--hoja-texto); border-top: 4px solid var(--tc, var(--tA));
+  border-radius: 16px 16px 0 0; box-shadow: 0 -10px 30px -12px rgba(0,0,0,.35);
+  background-image: radial-gradient(var(--hoja-pc) 1px, transparent 1.3px), radial-gradient(var(--hoja-pc) 1px, transparent 1.3px);
+  background-size: 5px 5px, 7px 7px; background-position: 0 0, 2px 3px;
+  font-family: var(--f-texto); outline: none;
+}
+.hoja-nota.abierta { transform: translate(-50%, 0); visibility: visible; transition: transform .32s var(--curva), visibility 0s; }
+.hoja-nota.arrastrando { transition: none; }
+.hoja-nota__asa { flex: none; width: 40px; height: 4px; border-radius: 2px; margin: 8px auto 2px; background: currentColor; opacity: .3; touch-action: none; cursor: grab; }
+.hoja-nota__cab {
+  flex: none; display: flex; align-items: center; gap: 10px; padding: 2px 10px 6px 20px; touch-action: none;
+  font-family: var(--f-ui); font-weight: 600; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+}
+.hoja-nota__marca { display: flex; color: var(--tc, var(--tA)); }
+.hoja-nota__marca .np-marca--vuelta { color: var(--tc2, var(--tB)); }
+.hoja-nota__marca svg { display: block; }
+.hoja-nota__marca .np-num { font-size: 15px; }
+.hoja-nota__titulo { flex: 1; min-width: 0; }
+.hoja-nota__nav { display: flex; }
+.hoja-nota__nav[hidden] { display: none; }
+.hoja-nota__cab button {
+  border: 0; background: none; color: inherit; cursor: pointer; font-size: 22px; line-height: 1; padding: 0;
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-family: var(--f-ui);
+}
+.hoja-nota__cab button:disabled { opacity: .25; cursor: default; }
+.hoja-nota__cuerpo {
+  flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  padding: 2px 24px 26px; padding-bottom: max(26px, env(safe-area-inset-bottom)); font-size: 17px; line-height: 1.55;
+}
+.hoja-nota__cuerpo p { margin: 0 0 .75em; }
+.hoja-nota__cuerpo p:last-child { margin-bottom: 0; }
+.hoja-nota__cuerpo a { color: inherit; text-decoration-color: var(--tc, var(--tA)); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+body.con-hoja .pag-entrada { padding-bottom: var(--hoja-alto, 0); }
+.modo-paginas .libro { transition: transform .3s var(--curva); }
+.hoja-ref__tipo { display: block; width: 14px; height: 14px; border-radius: 3px; }
+.hoja-ref img { display: block; max-width: 100%; max-height: 180px; margin: 4px 0 12px; }
+.hoja-ref h3 { margin: 0 0 6px; font-family: var(--f-titulos); font-weight: var(--w2-titulos); font-size: 22px; line-height: 1.12; }
+.hoja-ref__meta { font-family: var(--f-ui); font-size: 13px; opacity: .8; }
+.hoja-ref__ver { font-family: var(--f-ui); font-weight: 600; font-size: 14px; }
+@media (max-width: 720px) { .hoja-nota__cuerpo { font-size: 16px; padding: 2px 20px 24px; } }
+@media (prefers-reduced-motion: reduce) { .hoja-nota, .hoja-nota.abierta, .modo-paginas .libro { transition: none; } }

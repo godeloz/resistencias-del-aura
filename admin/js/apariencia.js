@@ -42,7 +42,9 @@
       return { titulo: x.titulo || '', autor: x.autor || '', introduccion: x.introduccion || '',
         firma: x.firma == null ? 'investigación por entregas' : x.firma, firma_anio: x.firma_anio !== false, lugar: x.lugar == null ? 'Medellín' : x.lugar };
     }
-    var ap = Object.assign({}, guardada), pr = textosDe(proyectoG);
+    function copiaAp(x) { var c = Object.assign({}, x); c.extra = JSON.parse(JSON.stringify(x.extra || {})); return c; }
+    var ap = copiaAp(guardada), pr = textosDe(proyectoG);
+    var sellos = undefined;   // undefined = cargando · null = falta el SQL 06 · [] = lista
     var vista = { tam: 'movil', pagina: 'inicio' };
     var primera = (A().entradas || []).filter(function (e) { return e.estado === 'publicado'; })[0];
 
@@ -103,6 +105,19 @@
         var c = pal.cuadernos[i % pal.cuadernos.length], cl = RA.esClaro(c);
         return '<button type="button" class="ap-patron" data-campo="patron_defecto" data-valor="' + k + '"' + anillo(ap.patron_defecto === k) + ' title="' + NOMBRES.patrones[k] + '" aria-label="' + NOMBRES.patrones[k] + '" style="background:' + c + ';--pc:' + (cl ? 'rgba(20,20,40,.18)' : 'rgba(255,255,255,.3)') + '"><span class="pat p-' + k + '"></span><span class="ap-patron__n">' + NOMBRES.patrones[k] + '</span></button>';
       }).join('') + '</div></section>';
+      // Notas al pie y apuntes (A-03, A-06): se guardan en «extra»
+      var ex = ap.extra || {}, colN = /^#[0-9a-f]{6}$/i.test(ex.color_nota || '') ? ex.color_nota : pal.papelSuave;
+      var temaAp = { a: { extra: ex }, pal: pal };
+      h += '<section class="ap-sec"><h2 class="ap-lbl">Notas al pie y apuntes</h2>' +
+        '<div class="ap-color"><input type="color" data-extra="color_nota" value="' + colN.toLowerCase() + '" aria-label="Color de la hoja de notas"><span>Color de la hoja donde se leen las notas al pie' + (ex.color_nota ? '' : ' <small>(el papel suave de la paleta)</small>') + '</span>' +
+          (ex.color_nota ? '<button type="button" data-extra-quitar="color_nota">Usar el de la paleta</button>' : '') + '</div>' +
+        '<h3 class="ap-lbl ap-sub">Colores de las fichas de apunte <small>(cada apunte elige uno en el editor)</small></h3><div class="ap-colores">' +
+        RA.coloresApunte(temaAp).map(function (c) {
+          var cambiado = ((ex.colores_apunte || {})[c.clave]);
+          return '<div class="ap-color"><input type="color" data-color-apunte="' + c.clave + '" value="' + c.hex.toLowerCase() + '" aria-label="' + esc(c.nombre) + '"><span>' + esc(c.nombre) + '</span>' +
+            (cambiado ? '<button type="button" data-color-apunte-quitar="' + c.clave + '" title="Volver al color original">original</button>' : '') + '</div>';
+        }).join('') + '</div></section>';
+      h += '<section class="ap-sec"><h2 class="ap-lbl">Sellos de los apuntes <small>(categorías; se guardan al momento)</small></h2>' + htmlSellos() + '</section>';
       secc.innerHTML = h;
       contarIntro();
       vistazo();
@@ -123,8 +138,28 @@
       var n = RA.contarPalabras(RA.esc(pr.introduccion));
       var c = secc.querySelector('.ap-cuenta'); if (c) c.textContent = '(' + n + ' palabras; se sugieren unas 90)';
     }
+    function htmlSellos() {
+      if (sellos === undefined) return '<p class="ed-nota">Cargando…</p>';
+      if (sellos === null) return '<p class="ed-nota ap-falta-06">Para crear sellos, corre en Supabase el archivo <code>supabase/06-sellos-de-apuntes.sql</code> (SQL Editor → pegar → Run) y recarga esta página.</p>';
+      return '<div class="ap-sellos">' + sellos.map(function (sl) {
+        return '<div class="ap-sello">' + RA.selloHTML(sl) + '<input type="text" maxlength="40" data-sello-nombre="' + esc(sl.id) + '" value="' + esc(sl.nombre) + '" aria-label="Nombre del sello">' +
+          '<input type="color" data-sello-color="' + esc(sl.id) + '" value="' + esc(String(sl.color).toLowerCase()) + '" aria-label="Color del sello">' +
+          '<button type="button" class="a-boton a-boton--fino" data-sello-quitar="' + esc(sl.id) + '">Quitar</button></div>';
+      }).join('') + '</div><p><button type="button" class="a-boton a-boton--fino" data-sello-nuevo>+ Añadir sello</button></p>' +
+        '<p class="ed-nota">Cada apunte puede llevar un sello o ninguno. El sello aparece en la ficha del apunte y en su portada.</p>';
+    }
+    function pintarSellos() { var el = secc.querySelector('.ap-sellos'); var sec = el ? el.closest('.ap-sec') : [].slice.call(secc.querySelectorAll('.ap-sec')).pop(); if (sec) sec.innerHTML = '<h2 class="ap-lbl">Sellos de los apuntes <small>(categorías; se guardan al momento)</small></h2>' + htmlSellos(); }
+    RA.adm.sellos().then(function (l) { sellos = l; pintarSellos(); }).catch(function () { sellos = null; pintarSellos(); });
+    var tSello = {};
+    function guardarSello(sl) {
+      clearTimeout(tSello[sl.id]);
+      tSello[sl.id] = setTimeout(function () {
+        RA.adm.guardarSello({ id: sl.id, nombre: sl.nombre.trim() || 'Sello', color: sl.color, orden: sl.orden || 0 })
+          .then(function () { ui().aviso('Sello guardado'); }).catch(function (e) { ui().aviso('No se guardó el sello: ' + e.message, 'error'); });
+      }, 500);
+    }
     function hayCambios() {
-      return CAMPOS.some(function (k) { return ap[k] !== guardada[k]; }) ||
+      return CAMPOS.some(function (k) { return ap[k] !== guardada[k]; }) || JSON.stringify(ap.extra || {}) !== JSON.stringify(guardada.extra || {}) ||
         TEXTOS.some(function (k) { return pr[k] !== textosDe(proyectoG)[k]; });
     }
     function estado() {
@@ -222,6 +257,45 @@
       if (b.getAttribute('data-campo') === 'fondo_admin' || b.getAttribute('data-campo') === 'paleta') fondoAdminVivo();
       pintar(); enviar();
     });
+    secc.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-extra-quitar],[data-color-apunte-quitar],[data-sello-quitar],[data-sello-nuevo]'); if (!b) return;
+      if (b.hasAttribute('data-extra-quitar')) { delete ap.extra[b.getAttribute('data-extra-quitar')]; pintar(); enviar(); return; }
+      if (b.hasAttribute('data-color-apunte-quitar')) {
+        var ca = Object.assign({}, ap.extra.colores_apunte || {}); delete ca[b.getAttribute('data-color-apunte-quitar')];
+        ap.extra.colores_apunte = ca; if (!Object.keys(ca).length) delete ap.extra.colores_apunte; pintar(); enviar(); return;
+      }
+      if (b.hasAttribute('data-sello-nuevo')) {
+        var pal = T.paletas[ap.paleta];
+        RA.adm.guardarSello({ nombre: 'Sello ' + (sellos.length + 1), color: pal.cuadernos[sellos.length % pal.cuadernos.length], orden: sellos.length + 1 })
+          .then(function (fila) { sellos.push(fila); pintarSellos(); var i = secc.querySelector('[data-sello-nombre="' + fila.id + '"]'); if (i) { i.focus(); i.select(); } })
+          .catch(function (e) { ui().aviso('No se pudo crear el sello: ' + e.message, 'error'); });
+        return;
+      }
+      if (b.hasAttribute('data-sello-quitar')) {
+        var id = b.getAttribute('data-sello-quitar'), sl = sellos.filter(function (x) { return x.id === id; })[0];
+        ui().confirmar('Quitar el sello', 'Se quitará «' + esc(sl.nombre) + '». Los apuntes que lo llevan quedan sin sello.', 'Quitar', true).then(function (si) {
+          if (!si) return;
+          RA.adm.borrarSello(id).then(function () { sellos = sellos.filter(function (x) { return x.id !== id; }); pintarSellos(); ui().aviso('Sello quitado'); })
+            .catch(function (e) { ui().aviso('No se pudo quitar: ' + e.message, 'error'); });
+        });
+      }
+    });
+    secc.addEventListener('input', function (ev) {
+      var t = ev.target;
+      if (t.hasAttribute('data-extra')) { ap.extra[t.getAttribute('data-extra')] = t.value.toUpperCase(); estado(); clearTimeout(secc._t); secc._t = setTimeout(enviar, 150); return; }
+      if (t.hasAttribute('data-color-apunte')) {
+        ap.extra.colores_apunte = Object.assign({}, ap.extra.colores_apunte || {}); ap.extra.colores_apunte[t.getAttribute('data-color-apunte')] = t.value.toUpperCase();
+        estado(); clearTimeout(secc._t); secc._t = setTimeout(enviar, 150); return;
+      }
+      if (t.hasAttribute('data-sello-nombre') || t.hasAttribute('data-sello-color')) {
+        var sid = t.getAttribute('data-sello-nombre') || t.getAttribute('data-sello-color'), s2 = sellos.filter(function (x) { return x.id === sid; })[0];
+        if (!s2) return;
+        if (t.hasAttribute('data-sello-nombre')) s2.nombre = t.value; else s2.color = t.value.toUpperCase();
+        var muestra = t.parentNode.querySelector('.sello'); if (muestra) { muestra.outerHTML = RA.selloHTML(s2); }
+        guardarSello(s2); return;
+      }
+    });
+    secc.addEventListener('change', function (ev) { if (ev.target.matches('[data-extra],[data-color-apunte]')) pintar(); });
     secc.addEventListener('input', function (ev) {
       var k = ev.target.getAttribute('data-pr'); if (!k) return;
       pr[k] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; contarIntro(); vistazo(); estado();
@@ -230,13 +304,14 @@
     P.querySelectorAll('[data-tam]').forEach(function (b) { b.onclick = function () { if (b.getAttribute('data-tam') === 'escritorio') abrirGrande(); else cerrarGrande(); }; });
     P.querySelectorAll('.ap-vista [data-pag]').forEach(function (b) { b.onclick = function () { irA(b.getAttribute('data-pag')); }; });
     P.querySelector('[data-ap="descartar"]').onclick = function () {
-      ap = Object.assign({}, guardada);
+      ap = copiaAp(guardada);
       pr = textosDe(proyectoG);
       fondoAdminVivo(); pintar(); enviar();
     };
     P.querySelector('[data-ap="publicar"]').onclick = function () {
       var b = this; b.disabled = true; b.textContent = 'Publicando…';
       var campos = {}; CAMPOS.forEach(function (k) { campos[k] = ap[k]; });
+      campos.extra = ap.extra || {};
       var textos = { titulo: pr.titulo.trim() || 'Resistencias del aura', autor: pr.autor.trim(), introduccion: pr.introduccion.trim() };
       if (CON05) { textos.firma = pr.firma.trim(); textos.firma_anio = !!pr.firma_anio; textos.lugar = pr.lugar.trim(); }
       Promise.all([RA.adm.guardarApariencia(campos), RA.adm.guardarProyecto(textos)])

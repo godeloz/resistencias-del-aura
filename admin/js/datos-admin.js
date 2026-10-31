@@ -61,7 +61,16 @@
     /* Todas las entradas, en el orden del carrusel, con su copia de trabajo (sin el cuerpo) */
     entradas: function () {
       return sb.from('entradas').select(LISTA + ',entradas_privado(trabajo)').order('orden', { ascending: true })
-        .then(ok).then(function (l) { return l.map(privado); });
+        .then(ok).then(function (l) {
+          l = l.map(privado);
+          // Apuntes A1, A2…: igual que en el sitio, se cuentan solo los publicados, en el orden del carrusel
+          var n = 0;
+          l.forEach(function (e) {
+            var v = e.trabajo ? Object.assign({}, e, e.trabajo) : e;
+            if (v.tipo === 'apunte' && e.estado === 'publicado') e.n_apunte = ++n; else delete e.n_apunte;
+          });
+          return l;
+        });
     },
 
     entrada: function (id) {
@@ -143,6 +152,17 @@
     guardarReferentes: function (id, ids) { return sb.rpc('guardar_referentes_de_entrada', { p_entrada: id, p_ids: ids }).then(ok); },
 
     tipos: function () { return sb.from('tipos').select('*').order('orden').then(ok); },
+
+    /* Sellos (categorías de los apuntes, SQL 06). null = la tabla aún no existe */
+    sellos: function () {
+      return sb.from('sellos').select('*').order('orden').then(function (r) {
+        if (r.error) return null;
+        RA.ponerSellos(r.data || []);
+        return r.data || [];
+      });
+    },
+    guardarSello: function (fila) { return sb.from('sellos').upsert(fila).select('*').single().then(ok); },
+    borrarSello: function (id) { return sb.from('sellos').delete().eq('id', id).then(ok); },
     buscarReferentes: function (q, ids) {
       var c = sb.from('referentes').select('id,titulo,tipo_id,fuente,autor').order('titulo').limit(30);
       if (ids) c = c.in('id', ids.length ? ids : ['-']);

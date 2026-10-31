@@ -39,7 +39,7 @@
       grande1: ci < 0 ? cs[3 % n] : cs[(ci + 2) % n],   // portadilla y franja «siguiente»
       grande2: p.apunte,
       fg: claro ? p.tinta : p.papel,
-      pc: claro ? 'rgba(20,20,40,.16)' : 'rgba(255,255,255,.28)',
+      pc: claro ? 'rgba(20,20,40,.09)' : 'rgba(255,255,255,.16)',   // patrones siempre sutiles (30 oct 2026)
       costura: claro ? 'rgba(29,29,58,.45)' : 'rgba(247,244,236,.85)',
       patron: e.portada_patron || tema.a.patron_defecto,
       forma: forma
@@ -52,8 +52,26 @@
       : 'background:' + st.bg;
   }
 
+  /* Portada de un apunte: ficha de archivo con pestaña, su color y su patrón (A-06) */
+  function htmlFichaApunte(e, tema, clase, atributos) {
+    var f = RA.fichaApunte(e, tema), sello = RA.selloDe ? RA.selloDe(e) : null;
+    return '<a class="cuaderno cuaderno--ficha es-apunte ' + (clase || '') + '" href="#/leer/' + encodeURIComponent(e.slug) + '" ' + (atributos || '') +
+      ' aria-label="' + esc(RA.antetitulo(e) + ': ' + e.titulo) + '">' +
+      '<span class="cuaderno__lienzo">' +
+        '<span class="ficha-pestana" style="background-color:' + f.color + '">' + esc(RA.numeroCorto(e)) + '</span>' +
+        '<span class="ficha-carton" style="background-color:' + f.color + ';--pc:rgba(20,20,40,.09)">' +
+          (f.patron !== 'lisa' ? '<span class="pat p-' + esc(f.patron) + '"></span>' : '') +
+          (sello ? RA.selloHTML(sello, 'sello--portada') : '') +
+          '<span class="ficha-carton__textos"><span class="antetitulo">Apunte · ' + RA.minutos(e) + '</span>' +
+          '<span class="ficha-carton__filete"></span>' +
+          '<span class="cuaderno__titulo">' + esc(e.titulo) + '</span></span>' +
+        '</span>' +
+      '</span></a>';
+  }
+
   /* Portada completa (carrusel). clase: «cuaderno--abanico» o «cuaderno--recto» */
   RA.htmlCuaderno = function (e, tema, clase, atributos) {
+    if (e.tipo === 'apunte') return htmlFichaApunte(e, tema, clase, atributos);
     var st = RA.estiloPortada(e, tema);
     var formas = st.imagen ? '' :
       '<span class="cuaderno__forma cuaderno__forma--circulo" style="' + st.forma[0] + ';background:' + st.o1 + '"></span>' +
@@ -74,6 +92,11 @@
 
   /* Miniatura (relacionados) */
   RA.htmlMini = function (e, tema) {
+    if (e.tipo === 'apunte') {
+      var f = RA.fichaApunte(e, tema);
+      return '<span class="mini mini--ficha" style="background-color:' + f.color + ';--pc:rgba(20,20,40,.09)">' +
+        (f.patron !== 'lisa' ? '<span class="pat p-' + esc(f.patron) + '"></span>' : '') + '<span class="mini__pestana">' + esc(RA.numeroCorto(e)) + '</span></span>';
+    }
     var st = RA.estiloPortada(e, tema);
     return '<span class="mini" style="' + fondo(st) + '">' +
       (st.imagen ? '' : '<span class="mini__circulo" style="background:' + st.o1 + '"></span>') +
@@ -81,5 +104,5 @@
   };
 
   /* Muestra de color (lista de cuadernos y barra de tintas) */
-  RA.colorCuaderno = function (e, tema) { return RA.estiloPortada(e, tema).bg; };
+  RA.colorCuaderno = function (e, tema) { return e.tipo === 'apunte' ? RA.fichaApunte(e, tema).color : RA.estiloPortada(e, tema).bg; };
 })();

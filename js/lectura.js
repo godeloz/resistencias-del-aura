@@ -79,7 +79,7 @@
     if (h === 'cuadernos') return pintarInicio(true);
     if (partes[0] === 'leer' && partes[1]) return pintarEntrada(partes[1]);
     if (partes[0] === 'vista' && partes[1]) return pintarEntrada(null, null, partes[1]);
-    if (partes[0] === 'referentes') return pintarReferentes(partes[1] || '');
+    if (partes[0] === 'referentes') return partes[1] === 'r' ? pintarReferentes('', partes[2] || '') : pintarReferentes(partes[1] || '');
     if (h === 'entrar') { location.href = 'admin/index.html'; return; }
     pintarMensaje('No encontrado', 'Esa página no existe.', false, true);
   }
@@ -151,7 +151,7 @@
         '</section>' +
         '<section class="intro">' + (sitio.proyecto.introduccion ? '<p>' + esc(sitio.proyecto.introduccion) + '</p>' : '') +
           (primero ? '<a class="boton" href="#/leer/' + encodeURIComponent(primero.slug) + '">Empezar por ' +
-            (primero.tipo === 'capitulo' ? 'el Día ' + primero.numero : 'el principio') + '</a>' : '') +
+            (primero.tipo === 'capitulo' && primero.numero ? 'el Día ' + primero.numero : 'el principio') + '</a>' : '') +
         '</section>' +
         '<section class="cuadernos" id="cuadernos" aria-label="Cuadernos">' +
           (ents.length ? '' : '<p class="vacio">Pronto, el primer cuaderno.</p>') +
@@ -282,7 +282,7 @@
       '<nav aria-label="Principal"><a href="#/cuadernos"' + (activa === 'cuadernos' ? ' aria-current="page"' : '') + '>Cuadernos</a>' +
       '<a href="#/referentes"' + (activa === 'referentes' ? ' aria-current="page"' : '') + '>Referentes</a></nav></header>';
   }
-  function pintarReferentes(slugFiltro) {
+  function pintarReferentes(slugFiltro, refId) {
     titulo('Referentes');
     S.app.innerHTML = '<div class="pag-referentes">' + cabeceraSitio('referentes') + '<div class="cargando"></div></div>';
     window.scrollTo(0, 0);
@@ -300,7 +300,7 @@
       var refs = U.referentes;
       refs.forEach(function (r) { (etqDe[r.id] || []).forEach(function (id) { conteoEtq[id] = (conteoEtq[id] || 0) + 1; }); });
       var conteoTipo = {}; refs.forEach(function (r) { conteoTipo[r.tipo_id] = (conteoTipo[r.tipo_id] || 0) + 1; });
-      var f = { tipo: '', etq: '', cuaderno: S.porSlug[slugFiltro] ? slugFiltro : '' };
+      var f = { tipo: '', etq: '', cuaderno: S.porSlug[slugFiltro] ? slugFiltro : '', ref: refId || '' };
       var cuadernosConCitas = S.sitio.entradas.filter(function (e) { return refsDe[e.slug]; });
       var topEtq = Object.keys(conteoEtq).sort(function (a, b) { return conteoEtq[b] - conteoEtq[a]; }).slice(0, 18);
       var raiz = S.app.querySelector('.pag-referentes');
@@ -325,10 +325,12 @@
           if (f.tipo && r.tipo_id !== f.tipo) return false;
           if (f.etq && (etqDe[r.id] || []).indexOf(f.etq) < 0) return false;
           if (f.cuaderno && !(refsDe[f.cuaderno] || {})[r.id]) return false;
+          if (f.ref && r.id !== f.ref) return false;
           return true;
         });
         var e = S.porSlug[f.cuaderno];
-        raiz.querySelector('.rf-sub').textContent = !refs.length ? 'Muy pronto, las lecturas, imágenes y datos que acompañan la investigación.'
+        if (f.ref) { raiz.querySelector('.rf-sub').innerHTML = l.length ? 'Un referente citado en los cuadernos · <a href="#/referentes">ver todos</a>' : 'Este referente no está disponible · <a href="#/referentes">ver todos</a>'; }
+        else raiz.querySelector('.rf-sub').textContent = !refs.length ? 'Muy pronto, las lecturas, imágenes y datos que acompañan la investigación.'
           : e ? l.length + (l.length === 1 ? ' referente citado' : ' referentes citados') + ' en ' + RA.antetitulo(e) + ': «' + e.titulo + '»'
           : l.length + (l.length === 1 ? ' lectura, imagen, dato o enlace' : ' lecturas, imágenes, datos y enlaces') + ' que acompañan la investigación';
         raiz.querySelector('.rf-muro').innerHTML = l.map(function (r) {
@@ -391,6 +393,8 @@
       if (!e && vistaId) return pintarMensaje('Vista previa', 'Para ver un borrador tienes que haber entrado como autor en este navegador.', false, true);
       if (!e) return pintarMensaje('No encontrado', 'Este cuaderno no existe o todavía no se ha publicado.', false, true);
       if (!vistaId) { S.ultimoSlug = e.slug; G.escribir('ultimo', e.slug); }
+      var deLista = S.porSlug[e.slug] || S.porId[e.id];
+      if (deLista && deLista.n_apunte) e.n_apunte = deLista.n_apunte;
       titulo(e.titulo);
       var i = -1;
       for (var k = 0; k < lista.length; k++) if (lista[k].slug === e.slug) i = k;
@@ -411,13 +415,18 @@
       var html;
       if (esApunte) {
         var origen = (e.relacionadas || []).map(function (id) { return S.porId[id]; }).filter(Boolean)[0];
-        html = '<div class="pag-entrada es-apunte modo-scroll"><span class="pat p-' + esc(st.patron) + '"></span>' +
-          '<span class="apunte__circulo" style="background:' + st.o2 + '"></span>' + barra +
-          '<article class="libro"><div class="ficha"><span class="antetitulo">Apunte · ' + RA.minutos(e) + '</span>' +
-            '<h1 class="ficha__titulo">' + esc(e.titulo) + '</h1>' +
-            '<div class="cuerpo">' + RA.limpiarHTML(e.cuerpo_html) + '</div></div>' +
+        var fa = RA.fichaApunte(e, t), sello = RA.selloDe(e);
+        html = '<div class="pag-entrada es-apunte modo-scroll">' + barra +
+          '<article class="libro"><div class="ficha">' +
+            '<span class="ficha__pestana" style="background-color:' + fa.color + '">' + esc(RA.numeroCorto(e)) + '</span>' +
+            '<div class="ficha__carton" style="background-color:' + fa.color + ';--pc:rgba(20,20,40,.09)">' +
+              (fa.patron !== 'lisa' ? '<span class="pat p-' + esc(fa.patron) + '"></span>' : '') +
+              (sello ? RA.selloHTML(sello, 'sello--ficha') : '') +
+              '<span class="antetitulo">Apunte · ' + RA.minutos(e) + '</span>' +
+              '<h1 class="ficha__titulo">' + esc(e.titulo) + '</h1><span class="ficha__filete"></span>' +
+              '<div class="cuerpo">' + RA.limpiarHTML(e.cuerpo_html) + '</div></div></div>' +
             (origen ? '<div class="apunte__origen-envoltura"><a class="apunte__origen" href="#/leer/' + encodeURIComponent(origen.slug) + '">Del ' +
-              (origen.tipo === 'capitulo' ? 'Día ' + origen.numero : 'apunte «' + esc(origen.titulo) + '»') + ' →</a></div>' : '') +
+              (origen.tipo === 'capitulo' ? (origen.numero ? 'Día ' + origen.numero : 'capítulo «' + esc(origen.titulo) + '»') : 'apunte «' + esc(origen.titulo) + '»') + ' →</a></div>' : '') +
             '<div class="final">' + finalHTML(e, sig, true) + '</div>' +
           '</article>' + pie() + '</div>';
       } else {
@@ -447,7 +456,8 @@
       raiz.querySelectorAll('.cuerpo img').forEach(function (im) { if (md.modo !== 'paginas') im.loading = 'lazy'; });
       raiz.querySelectorAll('.cuerpo a[href^="http"]').forEach(function (a) { a.target = '_blank'; a.rel = 'noopener'; });
 
-      var ctx = { e: e, raiz: raiz, md: md, pag: null, vista: vistaId || null };
+      var ctx = { e: e, raiz: raiz, md: md, pag: null, vista: vistaId || null, tema: t, tintas: tintasDe(e, st, t) };
+      ['tc', 'tc2', 'sobre'].forEach(function (k) { raiz.style.setProperty(k === 'sobre' ? '--tc-sobre' : '--' + k, ctx.tintas[k]); });
       if (vistaId) {
         var bv = document.createElement('div');
         bv.className = 'vista-previa';
@@ -458,8 +468,10 @@
       raiz.querySelector('.boton-aa').onclick = function () { abrirAjustes(ctx, this); };
       var leer = raiz.querySelector('.portadilla__leer');
       if (leer) leer.onclick = function () { irAlTexto(ctx); };
-      if (md.modo === 'paginas') ctx.pag = montarPaginas(ctx);
       var limpiezas = [];
+      if (RA.prepararCitas) limpiezas.push(RA.prepararCitas(ctx));
+      if (RA.montarNotas) limpiezas.push(RA.montarNotas(ctx));
+      if (md.modo === 'paginas') ctx.pag = montarPaginas(ctx);
       if (ctx.pag) limpiezas.push(ctx.pag.destruir);
       if (RA.montarReacciones && !vistaId) limpiezas.push(RA.montarReacciones(ctx));
       S.limpiar = function () { limpiezas.forEach(function (f) { f(); }); cerrarAjustes(); quitarAviso(); S.ctx = null; };
@@ -476,10 +488,29 @@
     });
   }
 
+  /* Tintas de la entrada para citas y notas: la del cuaderno (legible sobre el fondo) y una segunda */
+  function tintasDe(e, st, t) {
+    var pal = t.pal, tc, tc2;
+    if (e.tipo === 'apunte') { tc = pal.tinta; tc2 = RA.tintaLegible(pal.tituloB, pal.tinta); }
+    else { tc = RA.tintaLegible(st.bg, pal.tinta); tc2 = RA.tintaLegible(st.grande1 === st.bg ? pal.tituloB : st.grande1, pal.tinta); }
+    if (t.oscuro && e.tipo !== 'apunte') {
+      if (RA.lum(tc) < 0.14) tc = RA.mezclar(tc, '#FFFFFF', 0.4);
+      if (RA.lum(tc2) < 0.14) tc2 = RA.mezclar(tc2, '#FFFFFF', 0.4);
+    }
+    return { tc: tc, tc2: tc2, sobre: RA.lum(tc) < 0.3 ? '#FFFFFF' : pal.tinta };
+  }
+
   function finalHTML(e, sig, esApunte) {
     var t = S.tema, h = '';
-    h += '<p class="fin">' + (esApunte ? 'Fin del apunte' : 'Fin del día ' + e.numero) + '</p>';
-    if (sig) {
+    h += '<p class="fin">' + (esApunte ? 'Fin del apunte' : e.numero ? 'Fin del día ' + e.numero : 'Fin del capítulo') + '</p>';
+    if (sig && sig.tipo === 'apunte') {   // el siguiente es un apunte: la franja toma su ficha (color y patrón)
+      var fs = RA.fichaApunte(sig, t);
+      h += '<a class="siguiente siguiente--ficha" href="#/leer/' + encodeURIComponent(sig.slug) + '" style="--pc:rgba(20,20,40,.09);background:' + fs.color + ';color:' + t.pal.tinta + '">' +
+        (fs.patron !== 'lisa' ? '<span class="pat p-' + esc(fs.patron) + '"></span>' : '') +
+        '<span class="siguiente__dentro"><span class="siguiente__textos"><span class="antetitulo">Sigue · ' + esc(RA.antetitulo(sig)) + '</span>' +
+        '<span class="siguiente__titulo">' + esc(sig.titulo) + '</span></span>' +
+        '<span class="siguiente__boton">Seguir leyendo →</span></span></a>';
+    } else if (sig) {
       var st = RA.estiloPortada(sig, t);
       h += '<a class="siguiente" href="#/leer/' + encodeURIComponent(sig.slug) + '" style="--pc:' + st.pc + ';background:' + st.bg + ';color:' + st.fg + '">' +
         '<span class="siguiente__circulo" style="background:' + st.grande1 + '"></span><span class="pat p-' + esc(st.patron) + '"></span>' +
@@ -487,7 +518,7 @@
         '<span class="siguiente__titulo">' + esc(sig.titulo) + '</span></span>' +
         '<span class="siguiente__boton">Seguir leyendo →</span></span></a>';
     } else {
-      h += '<a class="siguiente" href="#/cuadernos" style="--pc:rgba(20,20,40,.16);background:var(--papel-suave);color:var(--tinta)"><span class="pat p-grano"></span>' +
+      h += '<a class="siguiente" href="#/cuadernos" style="--pc:rgba(20,20,40,.09);background:var(--papel-suave);color:var(--tinta)"><span class="pat p-grano"></span>' +
         '<span class="siguiente__dentro"><span class="siguiente__textos"><span class="antetitulo">Por ahora, el último</span>' +
         '<span class="siguiente__titulo">Pronto, la siguiente entrega</span></span>' +
         '<span class="siguiente__boton">Ver los cuadernos →</span></span></a>';
@@ -689,8 +720,9 @@
 
     fa.onclick = function () { ir(pagina - 1); };
     fs.onclick = function () { ir(pagina + 1); };
+    function hojaActiva() { return !!document.querySelector('.hoja-nota.abierta') || Date.now() - (RA.hojaCerradaEn || 0) < 500; }
     function teclas(ev) {
-      if (document.querySelector('.ajustes')) return;
+      if (document.querySelector('.ajustes') || hojaActiva()) return;
       if (['ArrowRight', 'PageDown', ' '].indexOf(ev.key) >= 0) { ev.preventDefault(); ir(pagina + 1); }
       if (['ArrowLeft', 'PageUp'].indexOf(ev.key) >= 0) { ev.preventDefault(); ir(pagina - 1); }
     }
@@ -704,6 +736,7 @@
       var dx = ev.clientX - ini.x, dy = ev.clientY - ini.y, dt = Date.now() - ini.t;
       var sel = window.getSelection();
       if (sel && !sel.isCollapsed) { ini = null; return; }   // está seleccionando texto para reaccionar
+      if (hojaActiva()) { ini = null; return; }               // el toque cerró una nota: no pasa la página
       var objetivo = ev.target;
       ini = null;
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) return ir(pagina + (dx < 0 ? 1 : -1));
@@ -736,6 +769,11 @@
     medir(); pintar(false);
     return {
       ir: ir, fraccion: fraccionP, irAFraccion: irAFraccion,
+      /* Lleva a la página donde está un elemento (sin animación) */
+      irAElemento: function (el) {
+        var x = el.getBoundingClientRect().left - pags.getBoundingClientRect().left;
+        pagina = Math.max(1, Math.min(total, Math.floor(x / paso) + 1)); pintar(false);
+      },
       recalcular: function (f) { medir(); if (pagina === 0) pintar(false); else irAFraccion(f); },
       destruir: function () {
         document.removeEventListener('keydown', teclas);

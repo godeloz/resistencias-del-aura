@@ -93,7 +93,7 @@
       }
       closeTo(0);
       if (b.t === 'h') out += '<h' + b.level + st + '>' + b.html + '</h' + b.level + '>';
-      else if (b.t === 'quote') out += '<blockquote' + st + '>' + b.html + '</blockquote>';
+      else if (b.t === 'quote') out += '<blockquote' + (b.destacada ? ' class="destacada"' : '') + st + '>' + b.html + '</blockquote>';
       else if (b.t === 'hr') out += '<hr>';
       else out += '<p' + st + '>' + (isEmpty(b.html) && b.html.indexOf('<br') < 0 ? '<br>' : b.html) + '</p>';
     });
@@ -199,7 +199,8 @@
           else if (s.name === 'subtitle') info.level = 2;
           else { const o = av(kid(s.pPr, 'outlineLvl'), 'val'); if (o !== null && +o < 9) info.level = +o + 1; }
         }
-        if (!info.quote && (/^(quote|intense quote|block text)$/.test(s.name) || /cita|quote/i.test(s.name + ' ' + s.id))) info.quote = true;
+        if (!info.quote && (/^(quote|intense quote|block text)$/.test(s.name) || /cita|quote/i.test(s.name + ' ' + s.id)))
+          info.quote = /intense|destacad|intens/i.test(s.name + ' ' + s.id) ? 'destacada' : true;   /* «Cita destacada» de Word → estilo A */
         if (!info.jc) info.jc = av(kid(s.pPr, 'jc'), 'val') || '';
         if (!info.numPr && kid(s.pPr, 'numPr')) info.numPr = kid(s.pPr, 'numPr');
         if (!info.listKind) { if (/^list bullet/.test(s.name)) info.listKind = 'ul'; else if (/^list number/.test(s.name)) info.listKind = 'ol'; }
@@ -320,7 +321,8 @@
             const key = k + id;
             if (fnHtml[key] === undefined) {
               const sub = new Ctx(false);
-              fnHtml[key] = all(note, 'p').map(function (pp) { return inlineOf(pp, sub); }).filter(function (x) { return !isEmpty(x); }).join(' ').trim();
+              fnHtml[key] = all(note, 'p').map(function (pp) { return inlineOf(pp, sub); }).filter(function (x) { return !isEmpty(x); })
+                .map(function (x) { return '<p>' + x.trim() + '</p>'; }).join('');   /* cada párrafo de la nota, en su párrafo */
               S.footnotes++;
             }
             push(FN + key + FN, {});
@@ -374,7 +376,7 @@
       if (S.images > imgs && isEmpty(html)) return null; /* el párrafo solo tenía una imagen */
       if (level && !isEmpty(html)) return { t: 'h', level: Math.min(level, 3), html: html, align: align, isTitle: info.isTitle && level === 1 };
       if (list && !isEmpty(html)) return { t: 'li', ordered: list.ordered, depth: list.depth, html: html };
-      if (info.quote && !isEmpty(html)) return { t: 'quote', html: html, align: align };
+      if (info.quote && !isEmpty(html)) return { t: 'quote', html: html, align: align, destacada: info.quote === 'destacada' };
       return { t: 'p', html: html, align: align };
     }
     function isToc(sdt) { const g = all(kid(sdt, 'sdtPr'), 'docPartGallery')[0]; return !!g && /table of contents/i.test(av(g, 'val') || ''); }
@@ -493,7 +495,7 @@
     s = s.replace(/\[\^([^\]]+)\]/g, function (m, id) {
       if (fdefs[id] === undefined) return m;
       const key = 'm' + id;
-      if (fnHtml[key] === undefined) { fnHtml[key] = mdInline(fdefs[id], {}, {}, S).replace(new RegExp(BR, 'g'), ' '); S.footnotes++; }
+      if (fnHtml[key] === undefined) { fnHtml[key] = '<p>' + mdInline(fdefs[id], {}, {}, S).replace(new RegExp(BR, 'g'), ' ') + '</p>'; S.footnotes++; }
       return keep(FN + key + FN);
     });
     s = s.replace(/\[([^\]]+)\]\((?:[^()\s]|\([^)]*\))*(?:\s+&quot;[^&]*&quot;)?\)/g, function (m, t) { S.links++; return t; });
@@ -572,9 +574,9 @@
     html = html.replace(new RegExp(FN + '([^' + FN + ']+)' + FN, 'g'), function (m, key) {
       if (doc.fnHtml[key] === undefined) return '';
       if (!num[key]) { order.push(key); num[key] = order.length; }
-      return '<sup>' + num[key] + '</sup>';
+      return '<sup class="np"></sup>';   /* formato de notas al pie del sitio (A-03): la marca va vacía */
     });
-    if (order.length) html += '<h3>Notas</h3><ol>' + order.map(function (k) { return '<li>' + (doc.fnHtml[k] || '<br>') + '</li>'; }).join('') + '</ol>';
+    if (order.length) html += '<ol class="notas-pie">' + order.map(function (k) { return '<li>' + (doc.fnHtml[k] || '<p><br></p>') + '</li>'; }).join('') + '</ol>';
     const tmp = document.createElement('div'); tmp.innerHTML = html;
     const plano = (tmp.textContent || '').replace(/\s+/g, ' ');
     /* Notas privadas: los comentarios cuyo pasaje quedó en esta pieza */

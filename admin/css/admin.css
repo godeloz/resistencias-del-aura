@@ -350,3 +350,64 @@ body.ap-grande-abierta { overflow: hidden; }
   .a-orden__fila { grid-template-columns: 26px 54px minmax(0, 1fr) auto; }
   .a-orden__asa, .a-orden__fila .a-chip { display: none; }
 }
+
+/* ══ Tanda 2 (31 oct 2026): notas al pie, citas, apuntes y sellos ══════ */
+/* Marcas de nota en el editor: pastillas */
+.ed-texto .ed-np {
+  display: inline-flex; align-items: center; gap: 3px; vertical-align: .32em; margin: 0 2px; padding: 1px 6px 1px 4px;
+  border-radius: 10px; background: var(--tA); color: #fff; font-family: var(--f-ui); font-size: 11px; line-height: 1.2;
+  cursor: pointer; user-select: all; -webkit-user-select: all; text-indent: 0;
+}
+.ed-texto .ed-np.ed-np--vuelta { background: var(--tB); }
+.ed-texto .ed-np svg { width: 11px; height: 11px; }
+.ed-texto .ed-np .np-num { display: none; }
+.ed-np__n { font-weight: 600; }
+.ed-texto .ed-np:hover { outline: 2px solid var(--a-texto); outline-offset: 1px; }
+.ed-texto blockquote cite { min-height: 1.2em; outline: none; }
+.ed-texto blockquote.destacada { margin: 36px 8px 36px 0; }
+.ed-texto blockquote.papel { transform: none; }
+/* El recuadro para escribir la nota */
+.ed-np-caja {
+  position: absolute; z-index: 60; background: var(--a-panel); color: var(--a-texto); border: 2px solid var(--a-texto);
+  box-shadow: 6px 6px 0 var(--tA); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; font-family: var(--f-ui);
+}
+.ed-np-caja__cab { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.ed-np-caja__marca { display: flex; color: var(--tA); }
+.ed-np-caja__marca .np-num { font-weight: 600; }
+.ed-np-caja__herr { margin-left: auto; display: flex; gap: 4px; }
+.ed-np-caja__herr button { border: 1px solid var(--a-linea); background: none; color: inherit; font: inherit; font-size: 13px; padding: 4px 9px; cursor: pointer; min-height: 32px; }
+.ed-np-caja__texto {
+  min-height: 120px; max-height: 50vh; overflow: auto; padding: 10px 12px; border: 1px solid var(--a-linea); background: var(--a-fondo);
+  font-family: var(--f-texto); font-size: 17px; line-height: 1.5; outline: none;
+}
+.ed-np-caja__texto:focus { border-color: var(--a-texto); }
+.ed-np-caja__texto p { margin: 0 0 .6em; }
+.ed-np-caja__texto a { color: inherit; text-decoration-color: var(--tA); }
+.ed-np-caja__pie { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ed-np-caja__ayuda { margin-right: auto; font-size: 11px; color: var(--a-suave); }
+.ed-np-caja__borrar { color: #C62F2F; }
+/* Panel: notas y ficha del apunte */
+.ed-np-lista { display: flex; flex-direction: column; gap: 2px; margin: 10px 0 6px; max-height: 260px; overflow: auto; }
+.ed-np-fila { display: flex; gap: 8px; align-items: flex-start; text-align: left; border: 0; background: none; color: var(--a-texto); font: inherit; font-size: 13px; padding: 6px 4px; cursor: pointer; line-height: 1.35; }
+.ed-np-fila:hover { background: var(--a-fondo); }
+.ed-np-fila__marca { flex: none; color: var(--tA); padding-top: 2px; }
+.ed-np-fila__marca.ed-np--vuelta { color: var(--tB); }
+.ed-np-fila__marca .np-num { font-weight: 600; font-size: 12px; }
+.ed-aviso-notas { margin: 10px 0; padding: 10px 12px; background: var(--acento); color: var(--acento-texto); font-size: 13px; }
+.ed-aviso-notas p { margin: 0 0 8px; }
+.ed-sub { display: block; margin: 8px 0 4px; font-size: 12px; font-weight: 600; }
+.ed-chip--sello { border: 1.5px solid var(--a-linea); background: none; color: var(--a-texto); font: inherit; font-size: 13px; padding: 5px 10px; cursor: pointer; gap: 6px; }
+.ed-chip--sello i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--sello); }
+.ed-chip--sello[aria-pressed="true"] { border-color: var(--a-texto); background: var(--a-texto); color: var(--a-panel); }
+.ed-resultados--ventana { margin-top: 10px; min-height: 120px; }
+.a-buscar { width: 100%; font: inherit; padding: 9px 10px; border: 2px solid var(--a-texto); background: var(--a-panel); color: var(--a-texto); }
+/* Apariencia: colores de nota y apunte, sellos */
+.ap-colores { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ap-color { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.ap-color input[type="color"] { width: 36px; height: 30px; padding: 0; border: 1px solid var(--a-linea); background: none; cursor: pointer; }
+.ap-color button { border: 0; background: none; color: var(--a-suave); cursor: pointer; font-size: 12px; text-decoration: underline; padding: 2px; }
+.ap-sellos { display: flex; flex-direction: column; gap: 6px; }
+.ap-sello { display: flex; align-items: center; gap: 8px; }
+.ap-sello input[type="text"] { flex: 1; font: inherit; font-size: 14px; padding: 7px 9px; border: 1px solid var(--a-linea); background: var(--a-panel); color: var(--a-texto); }
+.ap-sello input[type="color"] { width: 36px; height: 32px; padding: 0; border: 1px solid var(--a-linea); background: none; }
+.ap-sello .sello { width: 44px; height: 44px; font-size: 6px; flex: none; }

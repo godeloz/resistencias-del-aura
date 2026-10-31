@@ -36,7 +36,7 @@
 
   function sinCuerpo(e) {
     var r = {};
-    CAMPOS_LISTA.split(',').forEach(function (k) { r[k] = e[k]; });
+    CAMPOS_LISTA.split(',').concat('sello_id').forEach(function (k) { if (k in e) r[k] = e[k]; });
     return r;
   }
 
@@ -63,24 +63,35 @@
     cargarSitio: function () {
       if (modo === 'demo') {
         var D = window.RA_DEMO;
+        RA.ponerSellos(D.sellos || []);
         return Promise.resolve({
           proyecto: D.proyecto,
           apariencia: RA.normalizarApariencia(aparienciaDePrueba(D.apariencia)),
-          entradas: D.entradas.filter(function (e) { return e.estado === 'publicado'; })
-            .sort(function (a, b) { return a.orden - b.orden; }).map(sinCuerpo)
+          entradas: RA.numerarApuntes(D.entradas.filter(function (e) { return e.estado === 'publicado'; })
+            .sort(function (a, b) { return a.orden - b.orden; }).map(sinCuerpo))
         });
       }
       if (modo !== 'supabase') return Promise.reject(new Error('sin-config'));
       return Promise.all([
         sb.from('proyecto').select('*').eq('id', 1).maybeSingle(),   // «*»: funciona antes y después de correr el SQL 05
         sb.from('apariencia').select('*').eq('id', 1).maybeSingle(),
-        sb.from('entradas').select(CAMPOS_LISTA).eq('estado', 'publicado').order('orden', { ascending: true })
+        sb.from('entradas').select(CAMPOS_LISTA).eq('estado', 'publicado').order('orden', { ascending: true }),
+        // Sellos de los apuntes (SQL 06). Si la tabla aún no existe, se sigue sin sellos.
+        sb.from('sellos').select('id,nombre,color,orden').order('orden').then(function (x) {
+          if (x.error || !(x.data || []).length) return { data: [], conSello: [] };
+          return sb.from('entradas').select('id,sello_id').eq('estado', 'publicado').not('sello_id', 'is', null).then(function (y) {
+            return { data: x.data, conSello: y.error ? [] : (y.data || []) };
+          });
+        })
       ]).then(function (r) {
         r.forEach(function (x) { if (x.error) throw x.error; });
+        RA.ponerSellos(r[3].data || []);
+        var sello = {}; (r[3].conSello || []).forEach(function (x) { sello[x.id] = x.sello_id; });
+        (r[2].data || []).forEach(function (e) { if (sello[e.id]) e.sello_id = sello[e.id]; });
         return {
           proyecto: r[0].data || { titulo: 'Resistencias del aura', introduccion: '', autor: '' },
           apariencia: RA.normalizarApariencia(r[1].data),
-          entradas: r[2].data || []
+          entradas: RA.numerarApuntes(r[2].data || [])
         };
       });
     },
