@@ -22,12 +22,12 @@
     setTimeout(function () { a.remove(); }, tipo === 'error' ? 5600 : 3000);
   };
   /* Ventana propia (no usa alert/confirm del navegador).
-     opciones: {titulo, texto | cuerpo (nodo), botones: [{texto, valor, tipo:'primario'|'peligro'|''}]} → Promise(valor) */
+     opciones: {titulo, texto | cuerpo (nodo), botones: [{texto, valor, tipo:'primario'|'peligro'|''}], clase} → Promise(valor) */
   ui.ventana = function (o) {
     return new Promise(function (resolver) {
       var antes = document.activeElement;
       var velo = document.createElement('div'); velo.className = 'a-velo';
-      var v = document.createElement('div'); v.className = 'a-ventana'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true');
+      var v = document.createElement('div'); v.className = 'a-ventana' + (o.clase ? ' ' + o.clase : ''); v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true');
       v.innerHTML = '<h2 class="a-ventana__titulo">' + esc(o.titulo || '') + '</h2>' + (o.texto ? '<p class="a-ventana__texto">' + o.texto + '</p>' : '') +
         '<div class="a-ventana__cuerpo"></div><div class="a-ventana__botones"></div>';
       if (o.cuerpo) v.querySelector('.a-ventana__cuerpo').appendChild(o.cuerpo);
@@ -141,6 +141,7 @@
       A.proyecto = r[1] || { titulo: 'Resistencias del aura', autor: '' };
       if (RA.importador) RA.importador.autor = A.proyecto.autor || '';
       pintarMarco();
+      if (RA.mb && RA.mb.alArrancar) RA.mb.alArrancar();   // avisos de cambios del Moodboard (si el navegador recuerda la carpeta)
       window.addEventListener('hashchange', enrutar);
       if (!A.escuchaSesion) {
         A.escuchaSesion = true;

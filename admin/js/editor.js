@@ -928,7 +928,7 @@
       if (!q) return;
       var cuerpo = document.createElement('div');
       cuerpo.innerHTML = '<p class="ed-nota">La autoría que escribiste se conserva y sigue siendo editable. El lector podrá tocarla para ver la ficha del referente.</p>' +
-        '<input type="search" class="a-buscar" placeholder="Buscar referentes por título…" aria-label="Buscar referentes"><div class="ed-resultados ed-resultados--ventana" role="listbox"></div>';
+        '<input type="search" class="a-buscar" placeholder="Buscar referentes por título, autor o fuente…" aria-label="Buscar referentes"><div class="ed-resultados ed-resultados--ventana" role="listbox"></div>';
       var inp = cuerpo.querySelector('input'), res = cuerpo.querySelector('.ed-resultados'), elegido = null, tt = null;
       function buscar() {
         RA.adm.buscarReferentes(inp.value.trim().toLowerCase()).then(function (l) {
@@ -936,7 +936,7 @@
             st.refInfo[r.id] = r;
             var tipo = st.tipos.filter(function (x) { return x.id === r.tipo_id; })[0];
             return '<button type="button" role="option" data-id="' + esc(r.id) + '"><span class="ed-ref__color" style="background:' + (tipo ? tipo.color : '#ccc') + '"></span>' + esc(r.titulo + (r.autor ? ' · ' + r.autor : '')) + '</button>';
-          }).join('') : '<p class="ed-nota">No hay referentes con ese título.</p>';
+          }).join('') : '<p class="ed-nota">Ningún referente coincide.</p>';
         }).catch(function () { res.innerHTML = '<p class="ed-nota">No se pudieron buscar los referentes.</p>'; });
       }
       inp.oninput = function () { clearTimeout(tt); tt = setTimeout(buscar, 200); };
@@ -1156,12 +1156,12 @@
     function abrirBuscador(cual) {
       var caja = panel.querySelector('[data-buscador="' + cual + '"]');
       caja.hidden = false;
-      caja.innerHTML = '<input type="search" placeholder="' + (cual === 'rel' ? 'Buscar entre las entradas…' : 'Buscar referentes…') + '" aria-label="Buscar"><div class="ed-resultados" role="listbox"></div>';
+      caja.innerHTML = '<input type="search" placeholder="' + (cual === 'rel' ? 'Buscar entre las entradas…' : 'Buscar por título, autor o fuente…') + '" aria-label="Buscar"><div class="ed-resultados" role="listbox"></div>';
       var inp = caja.querySelector('input'), res = caja.querySelector('.ed-resultados'), t = null;
       function mostrar(items) {
         res.innerHTML = items.length ? items.map(function (it) {
           return '<button type="button" role="option" data-id="' + esc(it.id) + '"><span class="ed-ref__color" style="background:' + it.color + '"></span>' + esc(it.texto) + '</button>';
-        }).join('') : '<p class="ed-nota">' + (cual === 'ref' ? 'No hay referentes. Se importan desde el Moodboard en la fase 4.' : 'No hay más entradas.') + '</p>';
+        }).join('') : '<p class="ed-nota">' + (cual === 'ref' ? 'Ningún referente coincide. Se traen del Moodboard en <a href="#/importar">Importar</a>.' : 'No hay más entradas.') + '</p>';
       }
       function buscar() {
         var q = inp.value.trim().toLowerCase();

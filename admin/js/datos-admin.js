@@ -90,6 +90,7 @@
     crear: function (datos, existentes) {
       var maxOrden = (existentes || []).reduce(function (m, e) { return Math.max(m, e.orden || 0); }, 0);
       var fila = Object.assign({ tipo: 'capitulo', titulo: '', entradilla: '', cuerpo_html: '', modo_lectura: 'lector' }, datos);
+      var origen = fila.origen; delete fila.origen;   // versión del Moodboard (SQL 07), va a entradas_privado
       if (fila.tipo === 'capitulo' && !fila.numero) {
         fila.numero = (existentes || []).filter(function (e) { return e.tipo === 'capitulo'; })
           .reduce(function (m, e) { return Math.max(m, e.numero || 0); }, 0) + 1;
@@ -100,7 +101,10 @@
       fila.estado = 'borrador';
       var notas = fila.notas || []; delete fila.notas;
       return sb.from('entradas').insert(fila).select('id').single().then(ok).then(function (r) {
-        return sb.from('entradas_privado').upsert({ entrada_id: r.id, notas: notas }).then(ok).then(function () { return r.id; });
+        return sb.from('entradas_privado').upsert({ entrada_id: r.id, notas: notas }).then(ok).then(function () {
+          if (!origen) return r.id;
+          return sb.from('entradas_privado').upsert({ entrada_id: r.id, origen: origen }).then(function () { return r.id; });   // sin el 07, se ignora
+        });
       });
     },
 
@@ -164,9 +168,10 @@
     guardarSello: function (fila) { return sb.from('sellos').upsert(fila).select('*').single().then(ok); },
     borrarSello: function (id) { return sb.from('sellos').delete().eq('id', id).then(ok); },
     buscarReferentes: function (q, ids) {
-      var c = sb.from('referentes').select('id,titulo,tipo_id,fuente,autor').order('titulo').limit(30);
+      // Sin texto: la lista completa, para elegir de ella. Con texto: por título, autor o fuente.
+      var c = sb.from('referentes').select('id,titulo,tipo_id,fuente,autor').order('titulo').limit(ids ? 1000 : 500);
       if (ids) c = c.in('id', ids.length ? ids : ['-']);
-      else if (q) c = c.ilike('titulo', '%' + q.replace(/[%_]/g, '') + '%');
+      else if (q) { var w = '%' + q.replace(/[%_,()*]/g, ' ').trim() + '%'; c = c.or('titulo.ilike.' + w + ',autor.ilike.' + w + ',fuente.ilike.' + w); }
       return c.then(ok);
     },
 
@@ -240,6 +245,26 @@
     },
     entradasPorOrigen: function () {
       return sb.from('entradas').select('id,origen_moodboard,estado,titulo').not('origen_moodboard', 'is', null).then(ok);
+    },
+    /* Entradas que vienen del Moodboard, con su texto vigente y la versión importada (SQL 07).
+       Si aún no se corrió el 07, se devuelven sin «origen» y con sinOrigen = true. */
+    entradasMoodboard: function () {
+      var campos = 'id,tipo,numero,titulo,estado,orden,cuerpo_html,origen_moodboard,actualizado_en,';
+      return sb.from('entradas').select(campos + 'entradas_privado(trabajo,origen)').not('origen_moodboard', 'is', null).then(function (r) {
+        if (!r.error) return { lista: r.data.map(conOrigen), sinOrigen: false };
+        return sb.from('entradas').select(campos + 'entradas_privado(trabajo)').not('origen_moodboard', 'is', null).then(ok)
+          .then(function (l) { return { lista: l.map(conOrigen), sinOrigen: true }; });
+      });
+      function conOrigen(e) {
+        var p = e.entradas_privado; if (Array.isArray(p)) p = p[0];
+        delete e.entradas_privado;
+        e.trabajo = p ? p.trabajo : null;
+        e.origen = p && p.origen ? p.origen : null;
+        return e;
+      }
+    },
+    guardarOrigen: function (id, origen) {
+      return sb.from('entradas_privado').upsert({ entrada_id: id, origen: origen }).then(ok);
     },
     notasDe: function (id) { return sb.from('entradas_privado').select('notas').eq('entrada_id', id).maybeSingle().then(ok).then(function (r) { return (r && r.notas) || []; }); },
     referentes: function () {
