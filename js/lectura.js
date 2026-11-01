@@ -63,6 +63,7 @@
   function aplicarTema() {
     S.tema = RA.calcularTema(S.sitio.apariencia, opcionesTema());
     RA.aplicarTema(S.tema);
+    if (RA.convocatoria) RA.convocatoria.actualizar(S.sitio.apariencia, S.tema);
   }
   function aplicarTam() {
     var r = document.documentElement;
@@ -75,6 +76,7 @@
     if (S.limpiar) { S.limpiar(); S.limpiar = null; }
     var h = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
     var partes = h.split('/');
+    if (RA.convocatoria) RA.convocatoria.vista(h === '' || h === 'cuadernos' ? 'inicio' : 'contenido');
     if (h === '' ) return pintarInicio(false);
     if (h === 'cuadernos') return pintarInicio(true);
     if (partes[0] === 'leer' && partes[1]) return pintarEntrada(partes[1]);
@@ -279,8 +281,11 @@
   /* ══ REFERENTES ═══════════════════════════════════════════════════ */
   function cabeceraSitio(activa) {
     return '<header class="cabecera"><a class="logo" href="#/" aria-label="Inicio"><span class="logo__a"></span><span class="logo__b"></span></a>' +
-      '<nav aria-label="Principal"><a href="#/cuadernos"' + (activa === 'cuadernos' ? ' aria-current="page"' : '') + '>Cuadernos</a>' +
-      '<a href="#/referentes"' + (activa === 'referentes' ? ' aria-current="page"' : '') + '>Referentes</a></nav></header>';
+      '<nav aria-label="Principal"><a class="nav-ico" href="#/cuadernos" title="Cuadernos"' + (activa === 'cuadernos' ? ' aria-current="page"' : '') + '>' +
+        RA.iconoCuadernos(24) + '<span class="solo-lector">Cuadernos</span></a>' +
+      '<a class="nav-ico" href="#/referentes" title="Referentes"' + (activa === 'referentes' ? ' aria-current="page"' : '') + '>' +
+        RA.iconoReferentes(22) + '<span class="solo-lector">Referentes</span></a></nav>' +
+      (RA.convocatoria ? RA.convocatoria.ppHTML(S.sitio.apariencia, S.tema, activa === 'referentes' ? 'referentes' : 'inicio') : '') + '</header>';
   }
   function pintarReferentes(slugFiltro, refId) {
     titulo('Referentes');
@@ -410,6 +415,7 @@
             ' aria-label="' + esc(RA.antetitulo(x) + ': ' + x.titulo) + '"' + (x.slug === e.slug ? ' aria-current="page"' : '') + '></a>';
         }).join('') + '</nav>' +
         '<button type="button" class="boton-aa" aria-label="Ajustes de lectura" aria-haspopup="dialog" aria-expanded="false">Aa</button>' +
+        (RA.convocatoria ? RA.convocatoria.ppHTML(S.sitio.apariencia, S.tema, 'lectura') : '') +
         '</header>';
 
       var html;
@@ -624,7 +630,7 @@
         '<button type="button" class="redondo" data-a="tema" aria-pressed="' + t.oscuro + '" aria-label="Tema oscuro">' + ICONOS.luna + '</button>' +
         '<button type="button" class="redondo" data-a="marcador" aria-pressed="' + tieneMarca + '" aria-label="' + (tieneMarca ? 'Quitar el marcador' : 'Poner un marcador aquí') + '">' + (tieneMarca ? ICONOS.marcadorLleno : ICONOS.marcador) + '</button>' +
         '<a class="redondo" href="#/" aria-label="Volver al inicio">' + ICONOS.casa + '</a>' +
-        '<a class="redondo" href="#/referentes" aria-label="Referentes">Ref.</a>' +
+        '<a class="redondo" href="#/referentes" aria-label="Referentes" title="Referentes">' + RA.iconoReferentes(20) + '</a>' +
       '</div>' +
       '<div><h2>Cuadernos</h2><ul class="ajustes__lista">' + lista.map(function (x) {
         return '<li><a href="#/leer/' + encodeURIComponent(x.slug) + '"' + (x.slug === e.slug ? ' aria-current="page"' : '') + '>' +

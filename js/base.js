@@ -130,6 +130,22 @@
   RA.marcaNota = function (i, estilo, tam) {
     return estilo === 'numeros' ? '<span class="np-num" aria-hidden="true">' + (i + 1) + '</span>' : RA.simboloNota(i, tam);
   };
+  /* Íconos de la cabecera (A-12), en las dos tintas del título, sobreimpresas como en la risografía.
+     Referentes: seis fichas como en el muro del Moodboard. Cuadernos: dos cuadernos en abanico. */
+  RA.iconoReferentes = function (tam) {
+    var t = ['A', 'B', 'B', 'A', 'A', 'B'];
+    var r = [[1, 1, 12], [1, 15, 8], [9, 1, 7], [9, 10, 13], [17, 1, 9], [17, 12, 11]].map(function (f, i) {
+      return '<rect x="' + f[0] + '" y="' + f[1] + '" width="6" height="' + f[2] + '" rx="1.6" fill="var(--t' + t[i] + ')"/>';
+    }).join('');
+    return '<svg class="icono-nav" width="' + (tam || 22) + '" height="' + (tam || 22) + '" viewBox="0 0 24 24" aria-hidden="true">' + r + '</svg>';
+  };
+  RA.iconoCuadernos = function (tam) {
+    return '<svg class="icono-nav" width="' + (tam || 22) + '" height="' + (tam || 22) + '" viewBox="0 0 24 24" aria-hidden="true">' +
+      '<rect x="2.5" y="3" width="11.5" height="17.5" rx="1.6" transform="rotate(-9 8 21)" fill="var(--tB)"/>' +
+      '<rect x="9" y="3.5" width="11.5" height="17.5" rx="1.6" transform="rotate(7 15 21)" fill="var(--tA)"/>' +
+      '<circle class="icono-nav__forma" cx="16.2" cy="9.4" r="2.3" fill="var(--fondo)"/></svg>';
+  };
+
   RA.minutos = function (e) { return (e.minutos || 1) + ' min'; };
 
   /* Estilos de cita (A-05). La clase va en el <blockquote>; sin clase = cita en bloque. */

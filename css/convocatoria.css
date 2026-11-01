@@ -1,0 +1,65 @@
+/* ════════════════════════════════════════════════════════════════════
+   Resistencias del aura · marcas de la convocatoria (temporal)
+   Logo de PP Cultura en la cabecera y pie de créditos fijo y plegable.
+   Todo cuelga de html.con-convocatoria: sin esa clase, nada de esto aplica.
+   Los colores salen de las variables del tema; no hay colores nuevos.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Logo de PP Cultura arriba a la derecha; el menú pasa a la izquierda, junto al logo del sitio ── */
+.conv-pp { display: block; flex: none; width: auto; height: 46px; }
+.cabecera .conv-pp { margin-left: 26px; }
+.con-convocatoria .cabecera nav { margin-left: 30px; }
+.con-convocatoria .cabecera .conv-pp { margin-left: auto; }
+.barra .conv-pp { height: 34px; margin-left: -4px; }
+
+/* ── Pie de créditos ──────────────────────────────────────────────── */
+.conv {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 26;
+  font-family: var(--f-ui); color: var(--texto);
+  transition: transform .35s var(--curva);
+}
+.conv__cuerpo {
+  display: flex; align-items: center; justify-content: space-between; gap: 28px;
+  padding: 12px var(--margen); padding-bottom: max(12px, env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--fondo) 94%, var(--texto));
+  border-top: 1px solid var(--linea);
+}
+.conv__leyenda { margin: 0; max-width: 48ch; font-weight: 400; font-size: 12.5px; line-height: 1.4; letter-spacing: .01em; }
+.conv__escudo { display: block; flex: none; height: 60px; width: auto; }
+
+/* Escudo con contenedor: la pestaña se apoya en el borde inferior, como en la guía */
+.conv--contenedor .conv__cuerpo { align-items: flex-end; padding-top: 10px; padding-bottom: 0; }
+.conv--contenedor .conv__leyenda { align-self: center; padding-bottom: env(safe-area-inset-bottom); }
+.conv--contenedor .conv__escudo { height: 74px; }
+
+.conv__pestana {
+  position: absolute; right: var(--margen); bottom: 100%; margin-bottom: -1px;
+  display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px 0 10px; cursor: pointer;
+  font-family: var(--f-ui); font-size: 12px; font-weight: 500; color: var(--texto);
+  background: color-mix(in srgb, var(--fondo) 94%, var(--texto));
+  border: 1px solid var(--linea); border-bottom: 0; border-radius: 8px 8px 0 0;
+}
+.conv__pestana svg { transition: transform .3s var(--curva); }
+.conv--plegado { transform: translateY(100%); }
+.conv--sin-anim, .conv--sin-anim .conv__pestana svg { transition: none; }
+.conv--plegado .conv__pestana svg { transform: rotate(180deg); }
+
+/* El contenido deja sitio al pie */
+html.con-convocatoria body { padding-bottom: var(--pie-conv, 0px); }
+.con-convocatoria .modo-paginas { min-height: 0; height: calc(100vh - var(--pie-conv, 0px) - var(--pie-tab, 0px)); height: calc(100dvh - var(--pie-conv, 0px) - var(--pie-tab, 0px)); }
+.con-convocatoria .contador-pagina { bottom: calc(10px + var(--pie-flot, 0px)); }
+.con-convocatoria .aviso-marcador { bottom: calc(8px + var(--pie-flot, 0px)); }
+.con-convocatoria .vista-previa { bottom: calc(10px + var(--pie-flot, 0px)); }
+
+@media (max-width: 720px) {
+  .conv-pp { height: 40px; }
+  .cabecera .conv-pp { margin-left: 18px; }
+  .con-convocatoria .cabecera nav { margin-left: 18px; }
+  .conv__cuerpo { gap: 16px; padding: 10px 16px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .conv__leyenda { font-size: 11px; line-height: 1.35; }
+  .conv__escudo { height: 48px; }
+  .conv--contenedor .conv__escudo { height: 60px; }
+  .conv__pestana { right: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .conv, .conv__pestana svg { transition: none; } }
+@media print { .conv { position: static; } html.con-convocatoria body { padding-bottom: 0; } }

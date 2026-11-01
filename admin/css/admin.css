@@ -411,3 +411,15 @@ body.ap-grande-abierta { overflow: hidden; }
 .ap-sello input[type="text"] { flex: 1; font: inherit; font-size: 14px; padding: 7px 9px; border: 1px solid var(--a-linea); background: var(--a-panel); color: var(--a-texto); }
 .ap-sello input[type="color"] { width: 36px; height: 32px; padding: 0; border: 1px solid var(--a-linea); background: none; }
 .ap-sello .sello { width: 44px; height: 44px; font-size: 6px; flex: none; }
+
+/* Convocatoria (Estímulos PP Cultura) */
+.ap-conv { padding: 16px 18px 18px; border: 2px dashed var(--a-linea); }
+.ap-conv .ap-sub { margin-top: 6px; }
+.ap-logos { display: flex; flex-wrap: wrap; gap: 8px; }
+.ap-logo {
+  width: 112px; padding: 10px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;
+  border: 2px solid #D6CFC0; font: 500 11px/1.25 var(--f-ui); text-align: center;
+}
+.ap-logo img { height: 46px; width: auto; max-width: 96px; object-fit: contain; }
+.ap-logo[aria-pressed="true"] { border: 3px solid var(--sombra); padding: 9px 5px 7px; }
+.ap-conv-leyenda { margin: 0; padding: 10px 12px; font: 400 14px/1.45 var(--f-ui); background: var(--a-panel); border-left: 4px solid var(--a-linea); }

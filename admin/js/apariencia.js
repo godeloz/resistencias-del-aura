@@ -65,6 +65,7 @@
     function anillo(sel) { return sel ? ' aria-pressed="true"' : ' aria-pressed="false"'; }
     function pintar() {
       var pal = T.paletas[ap.paleta], h = '';
+      h += htmlConvocatoria(pal);
       h += '<section class="ap-sec"><h2 class="ap-lbl">Textos del inicio</h2>' +
         '<label class="a-campo">Título del proyecto<input type="text" data-pr="titulo" value="' + esc(pr.titulo) + '"></label>' +
         '<label class="a-campo">Autor<input type="text" data-pr="autor" value="' + esc(pr.autor) + '"></label>' +
@@ -122,6 +123,46 @@
       contarIntro();
       vistazo();
       estado();
+    }
+    /* Marcas de la convocatoria (Estímulos PP Cultura): logo de PP y pie de créditos. Se guardan en extra.convocatoria */
+    function htmlConvocatoria(pal) {
+      var CV = RA.convocatoria; if (!CV) return '';
+      var c = CV.config(ap), D = CV.DIR;
+      function seg(k, ops) {
+        return '<div class="ap-fila">' + ops.map(function (o) {
+          return '<button type="button" class="ap-op" data-conv="' + k + '" data-valor="' + o[0] + '"' + anillo(String(c[k]) === o[0]) + '><b>' + o[1] + '</b>' + (o[2] ? '<small>' + o[2] + '</small>' : '') + '</button>';
+        }).join('') + '</div>';
+      }
+      function logos(k, lista, fondo) {
+        return '<div class="ap-logos">' + Object.keys(lista).map(function (id) {
+          return '<button type="button" class="ap-logo" data-conv="' + k + '" data-valor="' + id + '"' + anillo(c[k] === id) + ' style="background:' + fondo + '" title="' + esc(lista[id].nombre) + '">' +
+            '<img src="../' + D + id + '.png" alt=""><span style="color:' + (RA.esClaro(fondo) ? '#1D1D3A' : '#F3F0E8') + '">' + esc(lista[id].nombre) + '</span></button>';
+        }).join('') + '</div>';
+      }
+      var h = '<section class="ap-sec ap-conv"><h2 class="ap-lbl">Convocatoria · Estímulos PP Cultura <small>(marcas temporales)</small></h2>' +
+        '<label class="ap-check"><input type="checkbox" data-conv-activa' + (c.activa ? ' checked' : '') + '> Mostrar el logo de PP y el pie de créditos</label>';
+      if (!c.activa) return h + '<p class="ed-nota">Apagado: el sitio se ve como antes de la convocatoria.</p></section>';
+      h += '<div class="ap-dos"><div><h3 class="ap-lbl ap-sub">Pie de créditos al llegar al inicio</h3>' +
+          seg('plegado_inicio', [['false', 'Abierto'], ['true', 'Plegado']]) + '</div>' +
+        '<div><h3 class="ap-lbl ap-sub">Al llegar al contenido</h3>' +
+          seg('plegado_contenido', [['false', 'Abierto'], ['true', 'Plegado']]) + '<span class="ed-nota">Lectura de cuadernos y apuntes, y referentes.</span></div></div>' +
+        '<p class="ed-nota">El lector siempre puede abrirlo o plegarlo con la pestaña «Créditos»; su elección dura lo que dure su visita.</p>' +
+        '<h3 class="ap-lbl ap-sub">Logo de PP Cultura (arriba a la derecha)</h3>' +
+          seg('pp_donde', [['inicio', 'Solo en el inicio'], ['todas', 'En todas las páginas', 'también en la barra de lectura']]) +
+        '<div class="ap-dos"><div><h3 class="ap-lbl ap-sub">PP · fondo claro</h3>' + logos('pp_claro', CV.PPS, pal.papel) + '</div>' +
+          '<div><h3 class="ap-lbl ap-sub">PP · fondo oscuro</h3>' + logos('pp_oscuro', CV.PPS, T.fondosSitio.noche) + '</div></div>' +
+        '<h3 class="ap-lbl ap-sub">Escudo de la Alcaldía · fondo claro</h3>' + logos('escudo_claro', CV.ESCUDOS, pal.papel) +
+        '<h3 class="ap-lbl ap-sub">Escudo de la Alcaldía · fondo oscuro</h3>' + logos('escudo_oscuro', CV.ESCUDOS, T.fondosSitio.noche) +
+        '<span class="ed-nota">«Fondo oscuro» se usa cuando el sitio o el lector están en tema noche.</span>' +
+        '<h3 class="ap-lbl ap-sub">Leyenda obligatoria <small>(texto exacto de la convocatoria; no se edita)</small></h3>' +
+        '<p class="ap-conv-leyenda">' + esc(CV.LEYENDA) + '</p></section>';
+      return h;
+    }
+    function cambiarConv(k, v) {
+      ap.extra = ap.extra || {};
+      var c = Object.assign({}, ap.extra.convocatoria || {}); c[k] = v;
+      ap.extra.convocatoria = c;
+      pintar(); enviar();
     }
     function anioUltimo() {
       var f = (A().entradas || []).map(function (e) { return e.publicado_en; }).filter(Boolean).sort().pop();
@@ -251,6 +292,12 @@
     }
 
     marco.addEventListener('load', function () { enviar(); setTimeout(enviar, 400); });
+    secc.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-conv]'); if (!b) return;
+      var k = b.getAttribute('data-conv'), v = b.getAttribute('data-valor');
+      cambiarConv(k, v === 'true' ? true : (v === 'false' ? false : v));
+    });
+    secc.addEventListener('change', function (ev) { if (ev.target.hasAttribute('data-conv-activa')) cambiarConv('activa', ev.target.checked); });
     secc.addEventListener('click', function (ev) {
       var b = ev.target.closest('[data-campo]'); if (!b) return;
       ap[b.getAttribute('data-campo')] = b.getAttribute('data-valor');
