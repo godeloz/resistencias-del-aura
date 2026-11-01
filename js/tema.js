@@ -129,5 +129,15 @@
       if (m) m.setAttribute('content', tema.fondo);
     }
     RA.cargarFuentes(tema);
+    if (raiz === document.documentElement) RA.ponerFavicon(tema);
+  };
+
+  /* Favicon: el ícono de Cuadernos en las dos tintas de la paleta elegida.
+     favicon.svg y favicon.png (paleta Riso) quedan para los navegadores que no cambian el ícono al vuelo. */
+  RA.ponerFavicon = function (tema) {
+    var l = document.querySelector('link[rel="icon"][type="image/svg+xml"]');
+    if (!l || !RA.svgCuadernos) return;
+    var forma = tema.oscuro ? tema.fondo : tema.pal.papel;
+    l.href = 'data:image/svg+xml,' + encodeURIComponent(RA.svgCuadernos(tema.tituloA, tema.tituloB, forma, tema.mezcla));
   };
 })();

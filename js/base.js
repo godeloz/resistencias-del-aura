@@ -139,11 +139,19 @@
     }).join('');
     return '<svg class="icono-nav" width="' + (tam || 22) + '" height="' + (tam || 22) + '" viewBox="0 0 24 24" aria-hidden="true">' + r + '</svg>';
   };
+  function dibujoCuadernos(tA, tB, forma, mezcla) {
+    var m = mezcla ? ' style="mix-blend-mode:' + mezcla + '"' : '';
+    return '<rect x="2.5" y="3" width="11.5" height="17.5" rx="1.6" transform="rotate(-9 8 21)" fill="' + tB + '"' + m + '/>' +
+      '<rect x="9" y="3.5" width="11.5" height="17.5" rx="1.6" transform="rotate(7 15 21)" fill="' + tA + '"' + m + '/>' +
+      '<circle class="icono-nav__forma" cx="16.2" cy="9.4" r="2.3" fill="' + forma + '"/>';
+  }
   RA.iconoCuadernos = function (tam) {
     return '<svg class="icono-nav" width="' + (tam || 22) + '" height="' + (tam || 22) + '" viewBox="0 0 24 24" aria-hidden="true">' +
-      '<rect x="2.5" y="3" width="11.5" height="17.5" rx="1.6" transform="rotate(-9 8 21)" fill="var(--tB)"/>' +
-      '<rect x="9" y="3.5" width="11.5" height="17.5" rx="1.6" transform="rotate(7 15 21)" fill="var(--tA)"/>' +
-      '<circle class="icono-nav__forma" cx="16.2" cy="9.4" r="2.3" fill="var(--fondo)"/></svg>';
+      dibujoCuadernos('var(--tA)', 'var(--tB)', 'var(--fondo)') + '</svg>';
+  };
+  /* El mismo dibujo como archivo SVG independiente (favicon), con los colores de la paleta */
+  RA.svgCuadernos = function (tA, tB, forma, mezcla) {
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g style="isolation:isolate">' + dibujoCuadernos(tA, tB, forma, mezcla || 'multiply') + '</g></svg>';
   };
 
   RA.minutos = function (e) { return (e.minutos || 1) + ' min'; };
