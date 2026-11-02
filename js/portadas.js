@@ -52,16 +52,23 @@
       : 'background:' + st.bg;
   }
 
+  /* Ícono de audífonos en las portadas de las entradas con audio (A-13) */
+  function audioPortada(e) {
+    if (!e.con_audio || !RA.iconoAudio) return '';
+    return '<span class="cuaderno__audio" title="Con audio">' + RA.iconoAudio(14) + '</span>';
+  }
+
   /* Portada de un apunte: ficha de archivo con pestaña, su color y su patrón (A-06) */
   function htmlFichaApunte(e, tema, clase, atributos) {
     var f = RA.fichaApunte(e, tema), sello = RA.selloDe ? RA.selloDe(e) : null;
     return '<a class="cuaderno cuaderno--ficha es-apunte ' + (clase || '') + '" href="#/leer/' + encodeURIComponent(e.slug) + '" ' + (atributos || '') +
-      ' aria-label="' + esc(RA.antetitulo(e) + ': ' + e.titulo) + '">' +
+      ' aria-label="' + esc(RA.antetitulo(e) + ': ' + e.titulo + (e.con_audio ? ' · con audio' : '')) + '">' +
       '<span class="cuaderno__lienzo">' +
         '<span class="ficha-pestana" style="background-color:' + f.color + '">' + esc(RA.numeroCorto(e)) + '</span>' +
         '<span class="ficha-carton" style="background-color:' + f.color + ';--pc:rgba(20,20,40,.09)">' +
           (f.patron !== 'lisa' ? '<span class="pat p-' + esc(f.patron) + '"></span>' : '') +
           (sello ? RA.selloHTML(sello, 'sello--portada') : '') +
+          audioPortada(e) +
           '<span class="ficha-carton__textos"><span class="antetitulo">Apunte · ' + RA.minutos(e) + '</span>' +
           '<span class="ficha-carton__filete"></span>' +
           '<span class="cuaderno__titulo">' + esc(e.titulo) + '</span></span>' +
@@ -77,12 +84,13 @@
       '<span class="cuaderno__forma cuaderno__forma--circulo" style="' + st.forma[0] + ';background:' + st.o1 + '"></span>' +
       (st.forma[1] ? '<span class="cuaderno__forma" style="' + st.forma[1] + ';background:' + st.o2 + '"></span>' : '');
     return '<a class="cuaderno ' + (clase || '') + (e.tipo === 'apunte' ? ' es-apunte' : '') + '" href="#/leer/' + encodeURIComponent(e.slug) + '" ' + (atributos || '') +
-      ' aria-label="' + esc(RA.antetitulo(e) + ': ' + e.titulo) + '">' +
+      ' aria-label="' + esc(RA.antetitulo(e) + ': ' + e.titulo + (e.con_audio ? ' · con audio' : '')) + '">' +
       '<span class="cuaderno__lienzo" style="--pc:' + st.pc + ';' + fondo(st) + '">' +
         formas +
         (st.imagen ? '' : '<span class="pat p-' + esc(st.patron) + '"></span>') +
         '<span class="cuaderno__costura" style="border-color:' + st.costura + '"></span>' +
         '<span class="cuaderno__numero" style="color:' + (st.imagen ? 'var(--papel)' : st.fg) + '">' + RA.numeroCorto(e) + '</span>' +
+        audioPortada(e) +
         '<span class="cuaderno__etiqueta">' +
           '<span class="antetitulo">' + esc(RA.antetitulo(e)) + ' · ' + RA.minutos(e) + '</span>' +
           '<span class="cuaderno__titulo">' + esc(e.titulo) + '</span>' +

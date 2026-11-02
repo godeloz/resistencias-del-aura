@@ -782,3 +782,197 @@ body.con-hoja .pag-entrada { padding-bottom: var(--hoja-alto, 0); }
 .cabecera nav .nav-ico[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--texto); text-decoration: none; }
 .icono-nav rect { mix-blend-mode: var(--mezcla); }
 @media (max-width: 720px) { .cabecera nav { gap: 18px; } }
+
+/* ══ AUDIO (A-13) ═══════════════════════════════════════════════════
+   Reproductor propio: barra abajo (pliega en pastilla), citas en otra voz,
+   párrafo que suena y modo escucha a pantalla completa. Colores: --au-voz
+   (la voz que habla: la tinta del cuaderno o la de la otra voz). */
+.boton--tinta { background: var(--tinta); color: var(--papel); box-shadow: 4px 4px 0 var(--sombra); }
+.tema-oscuro .boton--tinta { background: var(--papel); color: var(--tinta); }
+.boton-escuchar { display: inline-flex; align-items: center; gap: 8px; }
+.boton-escuchar svg { flex: none; }
+.portadilla__acciones { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 4px; }
+.portadilla__acciones .portadilla__leer { margin-top: 0; }
+.portadilla__acciones .boton-escuchar { padding: 9px 14px; font-size: 14px; min-height: 40px; box-shadow: 3px 3px 0 var(--sombra); }
+.creditos-audio { margin: 0; font-family: var(--f-texto); font-style: italic; font-size: 15px; line-height: 1.4; }
+.ficha__audio { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 18px 0 0; }
+.ficha__audio .boton-escuchar { padding: 8px 14px; font-size: 14px; min-height: 40px; box-shadow: 3px 3px 0 var(--sombra); }
+
+/* Ícono en las portadas */
+.cuaderno__audio {
+  position: absolute; right: 14px; top: 16px; z-index: 2; display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%; background: var(--papel); color: var(--tinta);
+}
+.cuaderno--ficha .cuaderno__audio { top: 46px; right: 18px; }
+.cuaderno--mini .cuaderno__audio { display: none; }
+
+/* Barra del reproductor */
+.au-barra {
+  --au-voz: var(--tA);
+  position: fixed; z-index: 27; left: 50%; bottom: calc(14px + var(--pie-flot, 0px)); transform: translateX(-50%);
+  width: min(760px, calc(100% - 24px)); display: flex; align-items: center; gap: 6px; padding: 8px 10px 8px 8px;
+  background: var(--tinta); color: var(--papel); box-shadow: 4px 4px 0 var(--au-voz); border-radius: 18px;
+  font-family: var(--f-ui); transition: box-shadow .3s;
+}
+.tema-oscuro .au-barra { background: var(--papel); color: var(--tinta); }
+.au-barra button { border: 0; background: transparent; color: inherit; cursor: pointer; }
+.au-play {
+  flex: none; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--acento) !important; color: var(--acento-texto) !important; transition: background .3s;
+}
+.au-barra.otra-voz .au-play { background: var(--au-voz) !important; color: #fff !important; }
+.au-centro { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0 6px; }
+.au-quien { font-size: 12px; font-weight: 600; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+.au-quien::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--au-voz); }
+.au-pista { position: relative; height: 16px; }
+.au-pista::before { content: ''; position: absolute; left: 0; right: 0; top: 6px; height: 4px; border-radius: 2px; background: currentColor; opacity: .22; }
+.au-pista__lleno { position: absolute; left: 0; top: 6px; height: 4px; width: 0; border-radius: 2px; background: var(--acento); pointer-events: none; }
+.au-pista__marcas i { position: absolute; top: 3px; height: 10px; border-radius: 2px; opacity: .95; pointer-events: none; }
+.au-rango { position: absolute; inset: -6px 0; width: 100%; height: 28px; margin: 0; opacity: 0; cursor: pointer; }
+.au-pista:focus-within { outline: 2px solid var(--acento); outline-offset: 3px; border-radius: 4px; }
+.au-tiempos { display: flex; justify-content: space-between; font-size: 11px; font-weight: 500; opacity: .8; font-variant-numeric: tabular-nums; }
+.au-boton { flex: none; min-width: 36px; height: 40px; padding: 0 4px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-family: var(--f-ui); font-weight: 600; font-size: 13px; }
+.au-boton:hover { background: rgba(255,255,255,.1) !important; }
+.tema-oscuro .au-boton:hover { background: rgba(29,29,58,.08) !important; }
+.au-vel { min-width: 44px; }
+.au-pastilla { display: none; }
+/* Plegada: solo el botón y una línea de texto */
+.au-barra.plegada { left: auto; right: auto; left: 16px; transform: none; width: auto; max-width: calc(100% - 32px); padding: 5px 16px 5px 5px; border-radius: 30px; }
+.au-barra.plegada > :not(.au-play):not(.au-pastilla) { display: none; }
+.au-barra.plegada .au-pastilla { display: block; padding: 8px 2px; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.au-barra.plegada .au-play { width: 36px; height: 36px; }
+.au-barra.con-error .au-play { opacity: .5; }
+.au-barra.plegada.con-portada:not(.sonando) { display: none; }
+.pag-entrada.con-audio .contador-pagina { bottom: calc(88px + var(--pie-flot, 0px)); }
+.con-audio ~ .aviso-marcador, body:has(.au-barra) .aviso-marcador { bottom: calc(74px + var(--pie-flot, 0px)); }
+.con-audio .pie { padding-bottom: 96px; }
+.modo-paginas.con-audio .libro { padding-bottom: 104px; }
+.au-volver {
+  position: fixed; z-index: 27; left: 50%; transform: translateX(-50%); bottom: calc(86px + var(--pie-flot, 0px));
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; min-height: 36px; cursor: pointer;
+  font-family: var(--f-ui); font-weight: 600; font-size: 13px; border: 2px solid var(--tc, var(--tA)); border-radius: 20px;
+  background: var(--fondo); color: var(--tc, var(--tA));
+}
+.au-volver[hidden] { display: none; }
+
+/* Párrafo que suena (sin mover el texto: fondo y sombras laterales) */
+.cuerpo .au-bloque { transition: background-color .35s, box-shadow .35s; }
+.cuerpo .au-actual {
+  --au-res: color-mix(in srgb, var(--tc, var(--tA)) 13%, var(--fondo));
+  background-color: var(--au-res);
+  box-shadow: -10px 0 0 var(--au-res), 10px 0 0 var(--au-res), -13px 0 0 var(--tc, var(--tA));
+}
+.cuerpo blockquote.destacada.au-actual, .cuerpo blockquote.au-voz-activa.au-actual { box-shadow: 8px 8px 0 var(--sombra); }
+.cuerpo blockquote.au-voz-activa:not(.destacada) {
+  --au-res: color-mix(in srgb, var(--au-voz) 14%, var(--fondo));
+  background-color: var(--au-res);
+  box-shadow: -10px 0 0 var(--au-res), 10px 0 0 var(--au-res), -13px 0 0 var(--au-voz);
+}
+.cuerpo blockquote.destacada.au-voz-activa { box-shadow: 8px 8px 0 var(--au-voz); }
+/* Las citas en otra voz toman su tinta (filete, autoría, iniciales) */
+.cuerpo blockquote.au-con-voz { --tc: var(--au-voz); --tc-sobre: var(--au-voz-sobre, #fff); }
+.au-saltar {
+  position: fixed; z-index: 28; width: 34px; height: 34px; border-radius: 50%; border: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  background: var(--acento); color: var(--acento-texto); box-shadow: 2px 2px 0 var(--sombra);
+}
+.au-saltar svg { width: 18px; height: 18px; }
+.au-saltar[hidden] { display: none; }
+
+/* Botón de las citas en otra voz */
+.au-cita {
+  display: inline-flex; align-items: center; gap: 8px; justify-self: start; margin: .8em 0 0; padding: 4px 13px 4px 4px; min-height: 36px;
+  border: 2px solid var(--au-voz); border-radius: 22px; background: var(--papel); color: var(--tinta); cursor: pointer;
+  font-family: var(--f-ui); font-style: normal; font-weight: 600; font-size: 13px; line-height: 1; letter-spacing: .01em; text-transform: none;
+}
+.au-cita__icono { display: flex; width: 26px; height: 26px; border-radius: 50%; align-items: center; justify-content: center; background: var(--au-voz); color: #fff; }
+.au-cita__icono svg { width: 15px; height: 15px; }
+.au-onda { display: none; align-items: center; gap: 2px; height: 16px; }
+.au-onda i { display: block; width: 3px; height: 14px; border-radius: 2px; background: var(--au-voz); transform: scaleY(.4); }
+.au-cita.activo .au-onda { display: inline-flex; }
+.au-cita.activo .au-onda i { animation: au-onda 1s ease-in-out infinite; }
+.au-cita.activo .au-onda i:nth-child(2) { animation-delay: .2s; } .au-cita.activo .au-onda i:nth-child(3) { animation-delay: .4s; }
+.au-cita.activo .au-onda i:nth-child(4) { animation-delay: .1s; } .au-cita.activo .au-onda i:nth-child(5) { animation-delay: .3s; }
+@keyframes au-onda { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+.cuerpo blockquote.destacada .au-cita, .cuerpo blockquote.registro .au-cita { margin-top: 16px; }
+.cuerpo blockquote.epigrafe .au-cita { margin-left: auto; }
+
+/* Modo escucha */
+html.au-escuchando, html.au-escuchando body { overflow: hidden; }
+.au-escucha {
+  position: fixed; inset: 0; z-index: 60; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden;
+  background: var(--au-fondo); color: var(--au-fg); font-family: var(--f-ui);
+  padding: max(12px, env(safe-area-inset-top)) 0 max(16px, env(safe-area-inset-bottom));
+}
+.au-escucha > .pat { z-index: 0; }
+.au-escucha > :not(.pat) { position: relative; z-index: 1; }
+.au-escucha button { color: inherit; }
+.au-escucha .au-boton { border: 0; background: transparent; cursor: pointer; }
+.au-escucha .au-boton:hover { background: rgba(255,255,255,.14) !important; }
+.au-escucha__cabeza { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 16px; max-width: 760px; width: 100%; margin: 0 auto; }
+.au-escucha__texto, .au-seg button {
+  border: 2px solid currentColor; background: transparent; border-radius: 20px; padding: 6px 12px; min-height: 36px; cursor: pointer;
+  font-family: var(--f-ui); font-weight: 600; font-size: 13px;
+}
+.au-seg { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.au-seg button[aria-pressed="true"] { background: var(--papel); color: var(--tinta); border-color: var(--papel); }
+.au-escucha__vista { min-height: 0; overflow: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 16px 20px; max-width: 760px; width: 100%; margin: 0 auto; }
+.au-escucha__vista[hidden] { display: none; }
+.au-escucha__cuaderno { --k: .72; box-shadow: 0 24px 40px -24px rgba(0,0,0,.6); }
+.con-parrafo .au-escucha__cuaderno { --k: .34; }
+.con-parrafo .au-escucha__vista--portada { justify-content: flex-start; }
+.con-parrafo .au-escucha__portada { align-self: flex-start; display: flex; gap: 14px; align-items: center; }
+.con-parrafo .au-escucha__titulos { display: none; }
+.au-escucha__titulos { text-align: center; }
+.au-escucha__titulos h2 { margin: 6px 0 6px; font-family: var(--f-titulos); font-weight: var(--w-titulos); text-transform: var(--case-titulos); font-size: clamp(26px, 4vw, 40px); line-height: 1; }
+.au-escucha__titulos p { margin: 0; font-family: var(--f-texto); font-style: italic; font-size: 16px; }
+.au-escucha__parrafos { width: 100%; font-family: var(--f-texto); }
+.au-escucha__parrafos:empty { display: none; }
+.au-escucha__previo { margin: 0 0 18px; font-size: 16px; line-height: 1.5; opacity: .62; }
+.au-escucha__actual { margin: 0; font-size: clamp(21px, 3.2vw, 28px); line-height: 1.42; }
+.au-escucha__actual.es-titulo { font-family: var(--f-titulos); font-weight: var(--w-titulos); text-transform: var(--case-titulos); line-height: 1.05; }
+.au-escucha__actual.de-voz { padding: 16px 18px; background: var(--papel); color: var(--tinta); box-shadow: 6px 6px 0 var(--au-voz); font-style: italic; }
+.au-escucha__espera { font-size: 18px; font-style: italic; opacity: .8; }
+.au-escucha__quien { display: block; margin: 0 0 8px; font-family: var(--f-ui); font-style: normal; font-weight: 600; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.au-escucha__voz {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 40px));
+  padding: 20px 22px; background: var(--au-voz); color: var(--au-voz-fg); box-shadow: 6px 6px 0 var(--papel);
+}
+.au-escucha__voz[hidden] { display: none; }
+.au-escucha__voz p { margin: 0; font-family: var(--f-texto); font-style: italic; font-size: 20px; line-height: 1.42; }
+.au-escucha__vista--portada { position: relative; }
+.au-escucha__hoja { width: 100%; align-self: stretch; background: var(--papel); color: var(--tinta); border-radius: 10px; overflow: auto; flex: 1; min-height: 0; }
+.au-escucha__hoja .cuerpo { padding: 24px 22px 40px; font-family: var(--f-texto); font-size: calc(var(--tam) * .92); }
+.viendo-texto .au-escucha__vista--texto { justify-content: flex-start; }
+.au-escucha__controles { padding: 8px 20px 0; max-width: 760px; width: 100%; margin: 0 auto; }
+.au-escucha__seccion { min-height: 18px; margin-bottom: 8px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.au-pista--grande { height: 20px; }
+.au-escucha .au-pista__lleno { background: var(--papel); }
+.au-escucha__botones { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+.au-escucha__play {
+  width: 64px; height: 64px; border-radius: 50%; border: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  background: var(--acento); color: var(--acento-texto) !important; box-shadow: 4px 4px 0 var(--sombra);
+}
+.au-escucha__play svg { width: 28px; height: 28px; }
+.au-escucha .au-boton svg { width: 26px; height: 26px; }
+.au-hueco { width: 44px; }
+.au-escucha__menu { position: absolute; right: 20px; bottom: 100%; width: min(380px, calc(100% - 40px)); max-height: 50vh; overflow: auto; background: var(--papel); color: var(--tinta); box-shadow: 6px 6px 0 var(--sombra); }
+.au-escucha__menu ul { list-style: none; margin: 0; padding: 6px 0; }
+.au-escucha__menu button { display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 10px 16px; border: 0; background: transparent; cursor: pointer; text-align: left; font-family: var(--f-ui); font-size: 14px; color: var(--tinta) !important; }
+.au-escucha__menu button:hover { background: var(--papel-suave); }
+.au-escucha__menu[hidden] { display: none; }
+
+@media (max-width: 720px) {
+  .au-barra:not(.plegada) { bottom: calc(8px + var(--pie-flot, 0px)); width: calc(100% - 16px); padding: 6px 6px 6px 6px; gap: 2px; }
+  .au-barra .au-menos, .au-barra .au-mas { display: none; }
+  .au-barra.plegada { left: 12px; }
+  .au-volver { bottom: calc(76px + var(--pie-flot, 0px)); }
+  .portadilla__acciones { gap: 10px; }
+  .au-escucha__cuaderno { --k: .6; }
+  .au-escucha__actual { font-size: 21px; }
+  .au-escucha__voz p { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .au-cita.activo .au-onda i { animation: none; transform: scaleY(.8); }
+  .cuerpo .au-bloque, .au-barra, .au-play { transition: none; }
+}

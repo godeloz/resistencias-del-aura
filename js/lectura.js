@@ -407,6 +407,10 @@
       var md = modoDe(e);
       var t = S.tema, st = RA.estiloPortada(e, t);
       var esApunte = e.tipo === 'apunte';
+      var conAudio = RA.audio && RA.audio.tiene(e.audio);
+      var botonEscuchar = conAudio ? '<button type="button" class="boton boton--tinta boton-escuchar" data-escuchar>' + RA.iconoAudio(16) + ' <span class="boton-escuchar__texto">Escuchar' +
+        (e.audio.duracion ? ' · ' + RA.audio.minutos(e.audio.duracion) + ' min' : '') + '</span></button>' : '';
+      var creditosAudio = conAudio ? '<p class="creditos-audio">' + esc(RA.audio.creditos(e.audio, S.sitio.proyecto.autor)) + '</p>' : '';
 
       var barra = '<header class="barra">' +
         '<a class="barra__volver" href="#/cuadernos" aria-label="Volver a los cuadernos">←<span> Cuadernos</span></a>' +
@@ -422,7 +426,7 @@
       if (esApunte) {
         var origen = (e.relacionadas || []).map(function (id) { return S.porId[id]; }).filter(Boolean)[0];
         var fa = RA.fichaApunte(e, t), sello = RA.selloDe(e);
-        html = '<div class="pag-entrada es-apunte modo-scroll">' + barra +
+        html = '<div class="pag-entrada es-apunte modo-scroll' + (conAudio ? ' con-audio' : '') + '">' + barra +
           '<article class="libro"><div class="ficha">' +
             '<span class="ficha__pestana" style="background-color:' + fa.color + '">' + esc(RA.numeroCorto(e)) + '</span>' +
             '<div class="ficha__carton" style="background-color:' + fa.color + ';--pc:rgba(20,20,40,.09)">' +
@@ -430,6 +434,7 @@
               (sello ? RA.selloHTML(sello, 'sello--ficha') : '') +
               '<span class="antetitulo">Apunte · ' + RA.minutos(e) + '</span>' +
               '<h1 class="ficha__titulo">' + esc(e.titulo) + '</h1><span class="ficha__filete"></span>' +
+              (conAudio ? '<div class="ficha__audio">' + botonEscuchar + creditosAudio + '</div>' : '') +
               '<div class="cuerpo">' + RA.limpiarHTML(e.cuerpo_html) + '</div></div></div>' +
             (origen ? '<div class="apunte__origen-envoltura"><a class="apunte__origen" href="#/leer/' + encodeURIComponent(origen.slug) + '">Del ' +
               (origen.tipo === 'capitulo' ? (origen.numero ? 'Día ' + origen.numero : 'capítulo «' + esc(origen.titulo) + '»') : 'apunte «' + esc(origen.titulo) + '»') + ' →</a></div>' : '') +
@@ -447,12 +452,15 @@
           '<div class="portadilla__dentro">' +
             '<span class="portadilla__numero" style="color:' + (st.imagen ? 'var(--papel)' : st.fg) + '" aria-hidden="true">' + RA.numeroCorto(e) + '</span>' +
             '<div class="portadilla__etiqueta"><span class="antetitulo">' + esc(RA.antetitulo(e)) + ' · ' + RA.minutos(e) +
+              (conAudio && e.audio.duracion ? ' · ' + RA.audio.minutos(e.audio.duracion) + ' min de audio' : '') +
               (S.sitio.proyecto.autor ? ' · ' + esc(S.sitio.proyecto.autor) : '') + '</span>' +
               '<h1>' + esc(e.titulo) + '</h1>' +
               (e.entradilla ? '<p class="portadilla__entradilla">' + esc(e.entradilla) + '</p>' : '') +
-              '<button type="button" class="boton portadilla__leer">Leer →</button>' +
+              creditosAudio +
+              (conAudio ? '<div class="portadilla__acciones"><button type="button" class="boton portadilla__leer">Leer →</button>' + botonEscuchar + '</div>'
+                : '<button type="button" class="boton portadilla__leer">Leer →</button>') +
             '</div></div></section>';
-        html = '<div class="pag-entrada modo-' + md.modo + '">' + barra + portadilla +
+        html = '<div class="pag-entrada modo-' + md.modo + (conAudio ? ' con-audio' + (md.modo === 'paginas' ? '' : ' con-audio--escritorio') : '') + '">' + barra + portadilla +
           '<article class="libro"><div class="paginas"><div class="cuerpo">' + RA.limpiarHTML(e.cuerpo_html) + '</div>' +
             '<div class="final">' + finalHTML(e, sig, false) + '</div></div></article>' + pie() + '</div>';
       }
@@ -462,7 +470,8 @@
       raiz.querySelectorAll('.cuerpo img').forEach(function (im) { if (md.modo !== 'paginas') im.loading = 'lazy'; });
       raiz.querySelectorAll('.cuerpo a[href^="http"]').forEach(function (a) { a.target = '_blank'; a.rel = 'noopener'; });
 
-      var ctx = { e: e, raiz: raiz, md: md, pag: null, vista: vistaId || null, tema: t, tintas: tintasDe(e, st, t) };
+      var ctx = { e: e, raiz: raiz, md: md, pag: null, vista: vistaId || null, tema: t, tintas: tintasDe(e, st, t), sitio: S.sitio };
+      ctx.irAlTexto = function () { irAlTexto(ctx); };
       ['tc', 'tc2', 'sobre'].forEach(function (k) { raiz.style.setProperty(k === 'sobre' ? '--tc-sobre' : '--' + k, ctx.tintas[k]); });
       if (vistaId) {
         var bv = document.createElement('div');
@@ -480,6 +489,7 @@
       if (md.modo === 'paginas') ctx.pag = montarPaginas(ctx);
       if (ctx.pag) limpiezas.push(ctx.pag.destruir);
       if (RA.montarReacciones && !vistaId) limpiezas.push(RA.montarReacciones(ctx));
+      if (RA.montarAudio && conAudio) limpiezas.push(RA.montarAudio(ctx));
       S.limpiar = function () { limpiezas.forEach(function (f) { f(); }); cerrarAjustes(); quitarAviso(); S.ctx = null; };
 
       if (restaurar != null) irAFraccion(ctx, restaurar);
@@ -582,6 +592,7 @@
   function repintar() {
     var ctx = S.ctx; if (!ctx) return;
     var f = fraccion(ctx), slug = ctx.e.slug;
+    RA.audioContinuar = ctx.e.id;   // el audio no se corta al volver a pintar la misma entrada
     if (S.limpiar) { S.limpiar(); S.limpiar = null; }
     pintarEntrada(slug, f, ctx.vista);
   }
@@ -694,7 +705,7 @@
   /* ── Modo páginas ─────────────────────────────────────────────────── */
   function montarPaginas(ctx) {
     var raiz = ctx.raiz, libro = raiz.querySelector('.libro'), pags = raiz.querySelector('.paginas');
-    var pagina = 0, total = 1, paso = 1;   // página 0 = portadilla
+    var pagina = 0, total = 1, paso = 1, pintada = 0, api = null;   // página 0 = portadilla
     var chip = document.createElement('span'); chip.className = 'contador-pagina'; chip.setAttribute('aria-live', 'polite');
     var fa = document.createElement('button'); fa.className = 'flecha-pagina flecha-pagina--ant'; fa.type = 'button'; fa.setAttribute('aria-label', 'Página anterior'); fa.textContent = '←';
     var fs = document.createElement('button'); fs.className = 'flecha-pagina flecha-pagina--sig'; fs.type = 'button'; fs.setAttribute('aria-label', 'Página siguiente'); fs.textContent = '→';
@@ -715,6 +726,7 @@
       if (!anim) pags.style.transition = 'none';
       pags.style.transform = 'translateX(' + (-(Math.max(1, pagina) - 1) * paso) + 'px)';
       if (!anim) { pags.offsetWidth; pags.style.transition = ''; }
+      if (api && api.alCambiar && pagina !== pintada) { pintada = pagina; api.alCambiar(pagina); } else pintada = pagina;
       chip.textContent = pagina === 0 ? 'Portada' : pagina + ' / ' + total;
       chip.style.display = pagina === 0 ? 'none' : '';
       fa.disabled = pagina === 0; fs.disabled = pagina >= total;
@@ -773,8 +785,15 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { var f = fraccionP(); medir(); if (pagina > 0) irAFraccion(f); else pintar(false); });
 
     medir(); pintar(false);
-    return {
+    api = {
       ir: ir, fraccion: fraccionP, irAFraccion: irAFraccion,
+      pagina: function () { return pagina; },
+      /* Página donde está un elemento (para seguir la voz) */
+      paginaDe: function (el) {
+        var x = el.getBoundingClientRect().left - pags.getBoundingClientRect().left;
+        return Math.max(1, Math.min(total, Math.floor((x + 2) / paso) + 1));
+      },
+      alCambiar: null,
       /* Lleva a la página donde está un elemento (sin animación) */
       irAElemento: function (el) {
         var x = el.getBoundingClientRect().left - pags.getBoundingClientRect().left;
@@ -787,6 +806,7 @@
         chip.remove(); fa.remove(); fs.remove();
       }
     };
+    return api;
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);

@@ -118,6 +118,12 @@
           return '<div class="ap-color"><input type="color" data-color-apunte="' + c.clave + '" value="' + c.hex.toLowerCase() + '" aria-label="' + esc(c.nombre) + '"><span>' + esc(c.nombre) + '</span>' +
             (cambiado ? '<button type="button" data-color-apunte-quitar="' + c.clave + '" title="Volver al color original">original</button>' : '') + '</div>';
         }).join('') + '</div></section>';
+      // Audio (A-13): dónde están los archivos. Se guarda en extra.audio_base. Va antes de los sellos (pintarSellos usa la última sección)
+      h += '<section class="ap-sec"><h2 class="ap-lbl">Audio de las entradas</h2>' +
+        '<label class="a-campo">Dirección del repositorio de audio<input type="url" data-extra-texto="audio_base" value="' + esc(ex.audio_base || '') + '" placeholder="https://tu-usuario.github.io/resistencias-del-aura-audio/" spellcheck="false"></label>' +
+        '<p class="ed-nota">Cada entrada con audio busca aquí su archivo por el nombre (por ejemplo, <code>dia-7-alexa.mp3</code>). ' +
+        'Si lo dejas vacío, se busca en la carpeta <code>audio/</code> de este mismo sitio. En cada entrada también puedes pegar una dirección completa.</p>' +
+        (ex.audio_base && !/^https:\/\//i.test(ex.audio_base) ? '<p class="ed-nota ap-falta">La dirección debe empezar por https://</p>' : '') + '</section>';
       h += '<section class="ap-sec"><h2 class="ap-lbl">Sellos de los apuntes <small>(categorías; se guardan al momento)</small></h2>' + htmlSellos() + '</section>';
       secc.innerHTML = h;
       contarIntro();
@@ -329,6 +335,11 @@
     });
     secc.addEventListener('input', function (ev) {
       var t = ev.target;
+      if (t.hasAttribute('data-extra-texto')) {
+        var kt = t.getAttribute('data-extra-texto'), vt = t.value.trim();
+        if (vt) ap.extra[kt] = vt; else delete ap.extra[kt];
+        estado(); return;
+      }
       if (t.hasAttribute('data-extra')) { ap.extra[t.getAttribute('data-extra')] = t.value.toUpperCase(); estado(); clearTimeout(secc._t); secc._t = setTimeout(enviar, 150); return; }
       if (t.hasAttribute('data-color-apunte')) {
         ap.extra.colores_apunte = Object.assign({}, ap.extra.colores_apunte || {}); ap.extra.colores_apunte[t.getAttribute('data-color-apunte')] = t.value.toUpperCase();
@@ -342,7 +353,7 @@
         guardarSello(s2); return;
       }
     });
-    secc.addEventListener('change', function (ev) { if (ev.target.matches('[data-extra],[data-color-apunte]')) pintar(); });
+    secc.addEventListener('change', function (ev) { if (ev.target.matches('[data-extra],[data-color-apunte],[data-extra-texto]')) pintar(); });
     secc.addEventListener('input', function (ev) {
       var k = ev.target.getAttribute('data-pr'); if (!k) return;
       pr[k] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; contarIntro(); vistazo(); estado();

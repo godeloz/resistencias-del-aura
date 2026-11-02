@@ -217,7 +217,8 @@
       sellos: sellos   // null = falta el SQL 06
     };
     // El sello del apunte se guarda solo si la base ya tiene la columna (SQL 06)
-    RA.adm.EDITABLES.concat('sello_id' in e ? ['sello_id'] : []).forEach(function (k) { st.campos[k] = vig[k]; });
+    // El sello (SQL 06) y el audio (SQL 08) se guardan solo si la base ya tiene la columna
+    RA.adm.EDITABLES.concat('sello_id' in e ? ['sello_id'] : []).concat('audio' in e ? ['audio'] : []).forEach(function (k) { st.campos[k] = vig[k]; });
     var CLAVE_RESPALDO = 'respaldo:' + e.id;
     document.title = (vig.titulo || 'Sin título') + ' · Editor';
 
@@ -368,7 +369,8 @@
         var ya = publicada();
         return ui().confirmar(ya ? 'Publicar los cambios' : 'Publicar la entrada',
           (ya ? 'Los lectores verán la versión nueva de «' + esc(c.titulo) + '».' : '«' + esc(c.titulo) + '» quedará visible para todos en el sitio.') +
-          (otro ? '<br><br><strong>Ojo:</strong> ya hay otro Día ' + c.numero + ' publicado («' + esc(A().vigente(otro).titulo) + '»).' : ''),
+          (otro ? '<br><br><strong>Ojo:</strong> ya hay otro Día ' + c.numero + ' publicado («' + esc(A().vigente(otro).titulo) + '»).' : '') +
+          (RA.audioAdmin ? RA.audioAdmin.avisoPublicar(apiAudio) : ''),
           ya ? 'Publicar cambios' : 'Publicar').then(function (si) {
           if (!si) return;
           var campos = recoger();
@@ -1019,6 +1021,8 @@
         }).join('') + '</div>' + (c.tipo === 'apunte' ? '<span class="ed-nota">Los apuntes siempre se leen en scroll</span>' :
           c.modo_lectura === 'auto' ? '<span class="ed-nota">Páginas en el celular y scroll en el computador. El lector puede cambiarlo.</span>' :
           c.modo_lectura === 'lector' ? '<span class="ed-nota">Usa la lectura por defecto de Apariencia y el lector puede cambiarla.</span>' : ''));
+      if (RA.audioAdmin) h += seccion('Audio' + (RA.audio.tiene(c.audio) ? ' <span class="ed-cuenta">' + esc(RA.audio.NOMBRE_SINC[RA.audio.sinc(c.audio)].toLowerCase()) + '</span>' : ''),
+        RA.audioAdmin.seccionHTML(apiAudio), ' data-sec="audio"');
       var pls = pastillas(), antiguas = notasAntiguas();
       h += seccion('Notas al pie <span class="ed-cuenta">' + pls.length + '</span>',
         '<div class="ed-seg" role="group" aria-label="Marcas de las notas"><button type="button" data-np-estilo="simbolos" aria-pressed="' + (st.np.estilo !== 'numeros') + '">Símbolos</button>' +
@@ -1064,6 +1068,16 @@
     }
 
     function cambiarCampo(k, v) { st.campos[k] = v; cambio(); pintarPanel(); }
+    /* Lo que necesita el bloque de audio (admin/js/audio-admin.js) */
+    var apiAudio = {
+      conColumna: 'audio' in st.e,
+      audio: function () { return st.campos.audio; },
+      poner: function (a) { cambiarCampo('audio', a); },
+      cuerpo: function () { return cuerpoConNotas(); },
+      autor: A().proyecto && A().proyecto.autor,
+      apariencia: A().apariencia,
+      referentes: function () { return st.refs.map(function (id) { return st.refInfo[id]; }).filter(Boolean); }
+    };
     function guardarNotas() {
       RA.adm.guardarNotas(st.e.id, st.notas).catch(function (err) { ui().aviso('No se guardaron las notas: ' + err.message, 'error'); });
     }
@@ -1090,6 +1104,7 @@
         return;
       }
       if (d.convertirNotas !== undefined) return convertirNotas();
+      if (d.audio && RA.audioAdmin) return RA.audioAdmin.accion(d.audio, apiAudio);
       if (d.patron !== undefined) return cambiarCampo('portada_patron', d.patron || null);
       if (d.modo) return cambiarCampo('modo_lectura', d.modo);
       if (d.portada === 'quitar') return cambiarCampo('portada_imagen', null);

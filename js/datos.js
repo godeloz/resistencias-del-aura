@@ -37,6 +37,7 @@
   function sinCuerpo(e) {
     var r = {};
     CAMPOS_LISTA.split(',').concat('sello_id').forEach(function (k) { if (k in e) r[k] = e[k]; });
+    if (RA.audio && RA.audio.tiene(e.audio)) r.con_audio = e.audio.duracion || true;
     return r;
   }
 
@@ -82,9 +83,14 @@
           return sb.from('entradas').select('id,sello_id').eq('estado', 'publicado').not('sello_id', 'is', null).then(function (y) {
             return { data: x.data, conSello: y.error ? [] : (y.data || []) };
           });
-        })
+        }),
+        // Entradas con audio (SQL 08), para el ícono de las portadas. Sin la columna, se sigue sin audio.
+        sb.from('entradas').select('id,dur:audio->>duracion,archivo:audio->>archivo').eq('estado', 'publicado').not('audio', 'is', null)
+          .then(function (x) { return x.error ? { data: [] } : x; })
       ]).then(function (r) {
         r.forEach(function (x) { if (x.error) throw x.error; });
+        var conAudio = {}; (r[4].data || []).forEach(function (x) { if (x.archivo && String(x.archivo).trim()) conAudio[x.id] = +x.dur || true; });
+        (r[2].data || []).forEach(function (e) { if (conAudio[e.id]) e.con_audio = conAudio[e.id]; });
         RA.ponerSellos(r[3].data || []);
         var sello = {}; (r[3].conSello || []).forEach(function (x) { sello[x.id] = x.sello_id; });
         (r[2].data || []).forEach(function (e) { if (sello[e.id]) e.sello_id = sello[e.id]; });
