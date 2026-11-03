@@ -535,15 +535,31 @@
         var c = document.createElement('canvas'); c.width = c.height = 512;
         var g = c.getContext('2d');
         g.fillStyle = bgCuaderno; g.fillRect(0, 0, 512, 512);
-        g.globalCompositeOperation = 'multiply';
-        g.fillStyle = st.grande1 || tema.tituloA; g.beginPath(); g.arc(400, 140, 190, 0, Math.PI * 2); g.fill();
+        if (st.receta && !st.imagen) dibujarFormas(g, st.receta, 512);   // las formas de la portada (A-04)
         g.globalCompositeOperation = 'source-over';
-        g.fillStyle = e.tipo === 'apunte' ? tema.pal.tinta : st.fg;
+        g.fillStyle = e.tipo === 'apunte' ? RA.fichaApunte(e, tema).texto : st.num;
         g.font = '600 220px Jost, sans-serif'; g.textBaseline = 'top';
         g.fillText(RA.numeroCorto(e), 40, 40);
         portadaURL = c.toDataURL('image/png');
       } catch (x) { portadaURL = ''; }
       return portadaURL;
+    }
+    function dibujarFormas(g, r, L) {
+      r.formas.forEach(function (f) {
+        var b = RA.cajaForma(f, L, L), col = RA.colorRef(f.c, tema) || tema.tituloA;
+        g.save();
+        g.globalCompositeOperation = r.mezcla === 'normal' ? 'source-over' : 'multiply';
+        g.translate(b.left + b.w / 2, b.top + b.h / 2); g.rotate((f.r || 0) * Math.PI / 180);
+        var x = -b.w / 2, y = -b.h / 2;
+        g.fillStyle = col; g.strokeStyle = col; g.beginPath();
+        if (f.t === 'circulo') g.arc(0, 0, b.w / 2, 0, Math.PI * 2);
+        else if (f.t === 'anillo') { g.lineWidth = Math.max(2, b.w * f.g / 2); g.arc(0, 0, b.w / 2 - g.lineWidth / 2, 0, Math.PI * 2); g.stroke(); g.restore(); return; }
+        else if (f.t === 'medio') { g.arc(0, b.h / 2, b.w / 2, Math.PI, 0); g.closePath(); }
+        else if (f.t === 'cuarto') { g.moveTo(x + b.w, y + b.h); g.lineTo(x, y + b.h); g.arc(x + b.w, y + b.h, b.w, Math.PI, Math.PI * 1.5); g.closePath(); }
+        else if (f.t === 'triangulo') { g.moveTo(0, y); g.lineTo(x + b.w, y + b.h); g.lineTo(x, y + b.h); g.closePath(); }
+        else g.rect(x, y, b.w, b.h);
+        g.fill(); g.restore();
+      });
     }
     function ponerMetadatos(v) {
       if (!('mediaSession' in navigator) || !window.MediaMetadata) return;

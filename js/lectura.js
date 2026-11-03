@@ -427,9 +427,9 @@
         var origen = (e.relacionadas || []).map(function (id) { return S.porId[id]; }).filter(Boolean)[0];
         var fa = RA.fichaApunte(e, t), sello = RA.selloDe(e);
         html = '<div class="pag-entrada es-apunte modo-scroll' + (conAudio ? ' con-audio' : '') + '">' + barra +
-          '<article class="libro"><div class="ficha">' +
-            '<span class="ficha__pestana" style="background-color:' + fa.color + '">' + esc(RA.numeroCorto(e)) + '</span>' +
-            '<div class="ficha__carton" style="background-color:' + fa.color + ';--pc:rgba(20,20,40,.09)">' +
+          '<article class="libro"><div class="ficha' + (fa.claro ? '' : ' ficha-oscura') + '">' +
+            '<span class="ficha__pestana" style="background-color:' + fa.color + ';color:' + fa.texto + '">' + esc(RA.numeroCorto(e)) + '</span>' +
+            '<div class="ficha__carton" style="background-color:' + fa.color + ';color:' + fa.texto + ';--pc:' + fa.pc + '">' +
               (fa.patron !== 'lisa' ? '<span class="pat p-' + esc(fa.patron) + '"></span>' : '') +
               (sello ? RA.selloHTML(sello, 'sello--ficha') : '') +
               '<span class="antetitulo">Apunte · ' + RA.minutos(e) + '</span>' +
@@ -444,13 +444,11 @@
         var portadilla = '<section class="portadilla" style="--pc:' + st.pc + ';' + (st.imagen
             ? 'background:' + st.bg + ' url(\'' + encodeURI(st.imagen) + '\') center/cover no-repeat'
             : 'background:' + st.bg) + '">' +
-          (st.imagen ? '' : '<span class="portadilla__circulo" style="background:' + st.grande1 + '"></span>' +
-            '<span class="portadilla__cuadro" style="background:' + st.grande2 + '"></span>' +
-            '<span class="pat p-' + esc(st.patron) + '"></span>') +
+          (st.imagen ? '' : RA.capaFormas(st.receta, t) + RA.htmlPatron(st.patron)) +
           '<span class="portadilla__costura" style="border-color:' + st.costura + '"></span>' +
           '<a class="portadilla__volver" href="#/cuadernos" aria-label="Volver a los cuadernos" style="color:' + st.fg + '">←</a>' +
           '<div class="portadilla__dentro">' +
-            '<span class="portadilla__numero" style="color:' + (st.imagen ? 'var(--papel)' : st.fg) + '" aria-hidden="true">' + RA.numeroCorto(e) + '</span>' +
+            '<span class="portadilla__numero" style="color:' + (st.imagen ? 'var(--papel)' : st.num) + '" aria-hidden="true">' + RA.numeroCorto(e) + '</span>' +
             '<div class="portadilla__etiqueta"><span class="antetitulo">' + esc(RA.antetitulo(e)) + ' · ' + RA.minutos(e) +
               (conAudio && e.audio.duracion ? ' · ' + RA.audio.minutos(e.audio.duracion) + ' min de audio' : '') +
               (S.sitio.proyecto.autor ? ' · ' + esc(S.sitio.proyecto.autor) : '') + '</span>' +
@@ -507,7 +505,10 @@
   /* Tintas de la entrada para citas y notas: la del cuaderno (legible sobre el fondo) y una segunda */
   function tintasDe(e, st, t) {
     var pal = t.pal, tc, tc2;
-    if (e.tipo === 'apunte') { tc = pal.tinta; tc2 = RA.tintaLegible(pal.tituloB, pal.tinta); }
+    if (e.tipo === 'apunte') {
+      if (RA.fichaApunte(e, t).claro) { tc = pal.tinta; tc2 = RA.tintaLegible(pal.tituloB, pal.tinta); }
+      else { tc = pal.papel; tc2 = RA.mezclar(pal.tituloB, '#FFFFFF', 0.55); }   // ficha de color oscuro (A-04)
+    }
     else { tc = RA.tintaLegible(st.bg, pal.tinta); tc2 = RA.tintaLegible(st.grande1 === st.bg ? pal.tituloB : st.grande1, pal.tinta); }
     if (t.oscuro && e.tipo !== 'apunte') {
       if (RA.lum(tc) < 0.14) tc = RA.mezclar(tc, '#FFFFFF', 0.4);
@@ -521,7 +522,7 @@
     h += '<p class="fin">' + (esApunte ? 'Fin del apunte' : e.numero ? 'Fin del día ' + e.numero : 'Fin del capítulo') + '</p>';
     if (sig && sig.tipo === 'apunte') {   // el siguiente es un apunte: la franja toma su ficha (color y patrón)
       var fs = RA.fichaApunte(sig, t);
-      h += '<a class="siguiente siguiente--ficha" href="#/leer/' + encodeURIComponent(sig.slug) + '" style="--pc:rgba(20,20,40,.09);background:' + fs.color + ';color:' + t.pal.tinta + '">' +
+      h += '<a class="siguiente siguiente--ficha" href="#/leer/' + encodeURIComponent(sig.slug) + '" style="--pc:' + fs.pc + ';background:' + fs.color + ';color:' + fs.texto + '">' +
         (fs.patron !== 'lisa' ? '<span class="pat p-' + esc(fs.patron) + '"></span>' : '') +
         '<span class="siguiente__dentro"><span class="siguiente__textos"><span class="antetitulo">Sigue · ' + esc(RA.antetitulo(sig)) + '</span>' +
         '<span class="siguiente__titulo">' + esc(sig.titulo) + '</span></span>' +
@@ -529,7 +530,7 @@
     } else if (sig) {
       var st = RA.estiloPortada(sig, t);
       h += '<a class="siguiente" href="#/leer/' + encodeURIComponent(sig.slug) + '" style="--pc:' + st.pc + ';background:' + st.bg + ';color:' + st.fg + '">' +
-        '<span class="siguiente__circulo" style="background:' + st.grande1 + '"></span><span class="pat p-' + esc(st.patron) + '"></span>' +
+        RA.capaFormas(st.receta, t) + RA.htmlPatron(st.patron) +
         '<span class="siguiente__dentro"><span class="siguiente__textos"><span class="antetitulo">Sigue · ' + esc(RA.antetitulo(sig)) + '</span>' +
         '<span class="siguiente__titulo">' + esc(sig.titulo) + '</span></span>' +
         '<span class="siguiente__boton">Seguir leyendo →</span></span></a>';

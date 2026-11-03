@@ -218,7 +218,8 @@
     };
     // El sello del apunte se guarda solo si la base ya tiene la columna (SQL 06)
     // El sello (SQL 06) y el audio (SQL 08) se guardan solo si la base ya tiene la columna
-    RA.adm.EDITABLES.concat('sello_id' in e ? ['sello_id'] : []).concat('audio' in e ? ['audio'] : []).forEach(function (k) { st.campos[k] = vig[k]; });
+    // y la receta de la portada (SQL 09)
+    RA.adm.editables(e).forEach(function (k) { st.campos[k] = vig[k]; });
     var CLAVE_RESPALDO = 'respaldo:' + e.id;
     document.title = (vig.titulo || 'Sin título') + ' · Editor';
 
@@ -977,6 +978,8 @@
       var idx = lista.findIndex(function (x) { return x.id === st.e.id; });
       var colorActual = RA.colorCuaderno(e, T);
       var patronActual = c.portada_patron || '';
+      var conDiseno = 'portada_diseno' in st.e && !!RA.portadasAdmin;   // SQL 09
+      var receta = conDiseno ? RA.normalizarReceta(c.portada_diseno) : null;
       var h = '';
       h += seccion('Tipo de entrada', '<div class="ed-seg" role="group" aria-label="Tipo">' +
         '<button type="button" data-tipo="capitulo" aria-pressed="' + (c.tipo === 'capitulo') + '">Capítulo</button>' +
@@ -988,7 +991,9 @@
           '<div class="ed-portada"><div class="ed-portada__mini"></div><div class="ed-portada__ops">' +
             '<span class="ed-sub">Color</span><div class="ed-muestras" role="group" aria-label="Color de la ficha">' +
             colsA.map(function (col, i) { return '<button type="button" class="ed-color" data-color-apunte="' + i + '" style="background:' + col.hex + '" aria-pressed="' + (fa.indice === i) + '" aria-label="' + esc(col.nombre) + '" title="' + esc(col.nombre) + '"></button>'; }).join('') +
-            '</div><span class="ed-nota">' + esc(colsA[fa.indice].nombre) + '</span>' +
+            (conDiseno ? '<button type="button" class="ed-color ed-color--libre" data-color-libre aria-expanded="' + !!st.colorLibre + '" aria-pressed="' + fa.libre + '" title="Otro color: cualquiera de las paletas o uno propio" aria-label="Otro color"' + (fa.libre ? ' style="--libre:' + fa.color + '"' : '') + '></button>' : '') +
+            '</div><span class="ed-nota">' + (fa.libre ? 'Color libre' + (fa.claro ? '' : ' · oscuro: el texto del apunte pasa a papel') : esc(colsA[fa.indice].nombre)) + '</span>' +
+            (conDiseno && st.colorLibre ? RA.portadasAdmin.selectorColor('apunte', fa.libre ? RA.limpiarRefColor(c.portada_diseno.fondo) : null, T) : '') +
             '<span class="ed-sub">Patrón</span><div class="ed-muestras ed-muestras--patron" role="group" aria-label="Patrón de la ficha">' +
             RA.APUNTE.patrones.map(function (p) {
               return '<button type="button" class="ed-patron" data-patron-apunte="' + p + '" aria-pressed="' + (fa.patron === p) + '" title="' + RA.APUNTE.nombrePatron[p] + '" aria-label="Patrón ' + RA.APUNTE.nombrePatron[p] + '" style="background:' + fa.color + ';--pc:rgba(20,20,40,.22)">' + (p === 'lisa' ? '' : '<span class="pat p-' + p + '"></span>') + '</button>';
@@ -999,6 +1004,16 @@
           st.sellos.map(function (sl) {
             return '<button type="button" class="ed-chip ed-chip--sello" data-sello="' + esc(sl.id) + '" aria-pressed="' + (c.sello_id === sl.id) + '" style="--sello:' + esc(sl.color) + '"><i></i>' + esc(sl.nombre) + '</button>';
           }).join('') + '</div><span class="ed-nota">' + (st.sellos.length ? '' : 'Todavía no hay sellos. ') + 'Los sellos se crean en <a href="#/apariencia">Apariencia</a>.</span>');
+      } else if (conDiseno) {   // A-04: generador de portadas
+        h += seccion('Portada',
+          '<div class="ed-portada"><div class="ed-portada__mini"></div><div class="ed-portada__ops">' +
+            (c.portada_imagen ? '<span class="ed-nota">Con imagen: la imagen reemplaza el fondo y las formas.</span>' :
+              '<button type="button" class="a-boton a-boton--fino a-boton--primario" data-portada="disenar">Diseñar portada</button>' +
+              '<span class="ed-nota">' + (receta ? 'Diseñada en el generador' : 'Automática: según el número del día') + '</span>' +
+              (receta || c.portada_color != null || c.portada_patron ? '<button type="button" class="a-boton a-boton--fino" data-portada="automatica">Volver a la automática</button>' : '')) +
+            '<button type="button" class="a-boton a-boton--fino" data-portada="subir">' + (c.portada_imagen ? 'Cambiar imagen' : 'Subir imagen') + '</button>' +
+            (c.portada_imagen ? '<button type="button" class="a-boton a-boton--fino" data-portada="quitar">Quitar imagen</button>' : '') +
+          '</div></div>');
       } else
       h += seccion('Portada',
         '<div class="ed-portada"><div class="ed-portada__mini"></div><div class="ed-portada__ops">' +
@@ -1013,7 +1028,7 @@
             RA.TOKENS.patrones.map(function (p) {
               return '<button type="button" class="ed-patron" data-patron="' + p + '" aria-pressed="' + (patronActual === p) + '" title="' + p + '" aria-label="Patrón ' + p + '" style="background:' + colorActual + ';--pc:' + (RA.esClaro(colorActual) ? 'rgba(20,20,40,.3)' : 'rgba(255,255,255,.4)') + '"><span class="pat p-' + p + '"></span></button>';
             }).join('') +
-          '</div></div></div>');
+          '</div>' + (RA.portadasAdmin ? '<span class="ed-nota">Para diseñar la portada (formas, colores de cualquier paleta, plantillas), corre en Supabase <code>supabase/09-portadas.sql</code> y recarga.</span>' : '') + '</div></div>');
       h += seccion('Modo de lectura', '<div class="ed-opciones" role="group" aria-label="Modo de lectura">' +
         // «Automático» necesita el SQL 05 (lo delata el campo «firma» del proyecto)
         [['scroll', 'Scroll'], ['paginas', 'Páginas']].concat(A().proyecto && 'firma' in A().proyecto ? [['auto', 'Automático']] : []).concat([['lector', 'Elige el lector']]).map(function (m) {
@@ -1078,6 +1093,20 @@
       apariencia: A().apariencia,
       referentes: function () { return st.refs.map(function (id) { return st.refInfo[id]; }).filter(Boolean); }
     };
+    /* Lo que necesita el generador de portadas (admin/js/portadas-admin.js) */
+    var apiPortada = {
+      tema: T,
+      entrada: function () { return Object.assign({}, st.e, st.campos, { titulo: titulo.value || 'Sin título' }); },
+      receta: function () { return st.campos.portada_diseno; },
+      poner: function (r) {
+        if (r === null) { st.campos.portada_color = null; st.campos.portada_patron = null; }
+        cambiarCampo('portada_diseno', r);
+      },
+      vecinos: function () {
+        var l = A().entradas || [], i = l.findIndex(function (x) { return x.id === st.e.id; });
+        return [i > 0 ? A().vigente(l[i - 1]) : null, i >= 0 && i < l.length - 1 ? A().vigente(l[i + 1]) : null];
+      }
+    };
     function guardarNotas() {
       RA.adm.guardarNotas(st.e.id, st.notas).catch(function (err) { ui().aviso('No se guardaron las notas: ' + err.message, 'error'); });
     }
@@ -1088,13 +1117,18 @@
       if (d.tipo) {
         if (d.tipo === st.campos.tipo) return;
         st.campos.portada_patron = null; st.campos.portada_color = null;
+        if ('portada_diseno' in st.campos) st.campos.portada_diseno = null;
         if (d.tipo === 'apunte') st.campos.numero = null;
         else st.campos.numero = A().entradas.filter(function (x) { return x.tipo === 'capitulo' && x.id !== st.e.id; })
           .reduce(function (m, x) { return Math.max(m, A().vigente(x).numero || 0); }, 0) + 1;
         return cambiarCampo('tipo', d.tipo);
       }
       if (d.color !== undefined) return cambiarCampo('portada_color', d.color === '' ? null : +d.color);
-      if (d.colorApunte !== undefined) return cambiarCampo('portada_color', +d.colorApunte);
+      if (d.colorApunte !== undefined) { if ('portada_diseno' in st.campos) st.campos.portada_diseno = null; st.colorLibre = false; return cambiarCampo('portada_color', +d.colorApunte); }
+      if (d.colorLibre !== undefined) { st.colorLibre = !st.colorLibre; return pintarPanel(); }
+      if (d.gpP && d.gpDestino === 'apunte') return cambiarCampo('portada_diseno', { v: 1, fondo: { p: d.gpP, i: +d.gpI } });
+      if (d.portada === 'disenar' && RA.portadasAdmin) return RA.portadasAdmin.abrir(apiPortada);
+      if (d.portada === 'automatica') { st.campos.portada_color = null; st.campos.portada_patron = null; return cambiarCampo('portada_diseno', null); }
       if (d.patronApunte !== undefined) return cambiarCampo('portada_patron', d.patronApunte);
       if (d.sello !== undefined) return cambiarCampo('sello_id', d.sello || null);
       if (d.npEstilo) { st.np.estilo = d.npEstilo; pintarPastillas(); cambio(); return pintarPanel(); }
@@ -1138,6 +1172,7 @@
       }
     });
     panel.addEventListener('change', function (ev) {
+      if (ev.target.dataset.gpHex === 'apunte') return cambiarCampo('portada_diseno', { v: 1, fondo: { hex: ev.target.value.toUpperCase() } });
       if (ev.target.matches('.ed-dia input')) {
         var n = Math.max(1, Math.min(999, parseInt(ev.target.value, 10) || 1));
         cambiarCampo('numero', n);

@@ -677,7 +677,7 @@
           if (e.estado !== 'publicado') p = RA.adm.guardarEntrada(e.id, nuevos);
           else {
             var campos = {};
-            RA.adm.EDITABLES.concat('sello_id' in e ? ['sello_id'] : []).forEach(function (k) { campos[k] = v[k]; });
+            RA.adm.editables(e).forEach(function (k) { campos[k] = v[k]; });
             Object.assign(campos, nuevos);
             p = publicar ? RA.adm.publicar(e.id, campos, true) : RA.adm.guardarTrabajo(e.id, campos);
           }

@@ -89,10 +89,15 @@
       return { clave: c[0], nombre: c[1], hex: hex };
     });
   };
+  /* Color libre (A-04, SQL 09): portada_diseno = {fondo: {color}}. Sin él, uno de la lista.
+     texto y pc: tinta o papel según el color, para que la ficha se lea también en colores oscuros. */
   RA.fichaApunte = function (e, tema) {
     var l = RA.coloresApunte(tema), i = e.portada_color != null && l[e.portada_color] ? e.portada_color : 0;
     var pat = RA.APUNTE.patrones.indexOf(e.portada_patron) >= 0 ? e.portada_patron : 'lisa';
-    return { color: l[i].hex, indice: i, patron: pat };
+    var libre = e.portada_diseno && RA.colorRef && tema ? RA.colorRef(RA.limpiarRefColor(e.portada_diseno.fondo), tema) : null;
+    var color = libre || l[i].hex, claro = RA.esClaro(color), pal = tema ? tema.pal : { tinta: '#1D1D3A', papel: '#F7F4EC' };
+    return { color: color, indice: libre ? -1 : i, patron: pat, libre: !!libre, claro: claro,
+      texto: claro ? pal.tinta : pal.papel, pc: claro ? 'rgba(20,20,40,.09)' : 'rgba(255,255,255,.16)' };
   };
   /* Sello (categoría) de un apunte. Los sellos se crean en el administrador (SQL 06). */
   RA.sellos = {};

@@ -132,8 +132,27 @@ img { max-width: 100%; }
   border-radius: 6px 14px 14px 6px; overflow: hidden; box-shadow: 0 20px 34px -22px rgba(0,0,0,.6);
 }
 .cuaderno__lienzo { position: absolute; left: 0; top: 0; width: 290px; height: 410px; transform: scale(var(--k)); transform-origin: 0 0; overflow: hidden; }
-.cuaderno__forma { position: absolute; mix-blend-mode: multiply; }
-.cuaderno__forma--circulo { border-radius: 50%; }
+/* A-04 · Capa de fondo y formas de una portada. Es un «container»: cada forma se mide frente al lado corto
+   del marco (cqmin) y se ancla a una esquina, un borde o el centro, así la misma receta sirve en el cuaderno,
+   la portadilla, la miniatura y la franja «Sigue». La mezcla ocurre dentro de la capa (lleva el color de fondo). */
+.ra-capa { position: absolute; inset: 0; overflow: hidden; container-type: size; pointer-events: none; }
+.fz {
+  position: absolute; box-sizing: border-box; background: var(--c);
+  --L: calc(var(--s) * 100cqmin); --w: var(--L); --h: var(--L);
+  width: var(--w); height: var(--h);
+  left: calc(var(--ax) * (100cqw - var(--w)) + var(--dx) * 100cqmin);
+  top: calc(var(--ay) * (100cqh - var(--h)) + var(--dy) * 100cqmin);
+  transform: rotate(calc(var(--r) * 1deg));
+}
+.fz--circulo { border-radius: 50%; }
+.fz--medio { --h: calc(var(--L) / 2); border-radius: calc(var(--L) / 2) calc(var(--L) / 2) 0 0; }
+.fz--cuarto { border-top-left-radius: 100%; }
+.fz--barra { --h: calc(var(--L) * var(--g)); }
+.fz--franja { --w: calc((100cqw + 100cqh) * 1.6); --h: calc(var(--s) * 40cqmin); left: calc(50cqw - var(--w) / 2); }
+.fz--triangulo { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.fz--anillo { background: none; border-radius: 50%; border: max(2px, calc(var(--L) * var(--g) / 2)) solid var(--c); }
+/* En la franja «Sigue» el título va directo sobre el color: las formas quedan como un eco, para que se lea */
+.siguiente .fz { opacity: .38; }
 .cuaderno__costura { position: absolute; left: 16px; top: 0; bottom: 0; border-left: 2px dashed; }
 .cuaderno__numero {
   position: absolute; left: 36px; top: 24px; font-size: 84px; line-height: .8;
@@ -208,8 +227,6 @@ img { max-width: 100%; }
   position: relative; overflow: hidden; min-height: 640px; display: flex; align-items: flex-end;
   color: var(--tinta);
 }
-.portadilla__circulo { position: absolute; right: -120px; top: -80px; width: 640px; height: 640px; border-radius: 50%; mix-blend-mode: multiply; }
-.portadilla__cuadro { position: absolute; left: 12%; top: 80px; width: 260px; height: 260px; mix-blend-mode: multiply; }
 .portadilla__costura { position: absolute; left: 26px; top: 0; bottom: 0; border-left: 2px dashed; }
 .portadilla__dentro { position: relative; max-width: 1240px; width: 100%; margin: 0 auto; padding: 40px var(--margen) 56px; }
 .portadilla__numero {
@@ -347,7 +364,6 @@ img { max-width: 100%; }
   position: relative; display: block; overflow: hidden; text-decoration: none;
   padding: 84px clamp(20px, 8vw, 120px); color: var(--tinta);
 }
-.siguiente__circulo { position: absolute; right: 10%; top: -60px; width: 360px; height: 360px; border-radius: 50%; mix-blend-mode: multiply; }
 .siguiente__dentro { position: relative; max-width: 1080px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 32px; }
 .siguiente__textos { display: flex; flex-direction: column; gap: 12px; }
 .siguiente .antetitulo { font-size: 14px; letter-spacing: .14em; }
@@ -367,7 +383,6 @@ img { max-width: 100%; }
 .relacionado__titulo { font-size: 19px; line-height: 1.25; font-style: italic; }
 .relacionado:hover .relacionado__titulo { text-decoration: underline; text-decoration-color: var(--tA); }
 .mini { flex: 0 0 auto; position: relative; overflow: hidden; width: 54px; height: 76px; border-radius: 2px 6px 6px 2px; }
-.mini__circulo { position: absolute; right: -14px; top: 12px; width: 44px; height: 44px; border-radius: 50%; mix-blend-mode: multiply; }
 .mini__costura { position: absolute; left: 6px; top: 0; bottom: 0; border-left: 1px dashed; }
 .ver-referentes {
   display: inline-block; margin-top: 36px; font-family: var(--f-ui); font-weight: 500; font-size: 15px;
@@ -401,6 +416,11 @@ img { max-width: 100%; }
 .ficha .cuerpo { padding: 22px 0 0; max-width: none; }
 .ficha .cuerpo p:last-child { margin-bottom: 0; }
 .tema-oscuro .ficha__carton, .tema-oscuro .ficha__pestana { filter: brightness(.92); }
+/* Ficha de color oscuro (color libre, A-04): el texto pasa a papel */
+.ficha-oscura { color: var(--papel); }
+.ficha-oscura .ficha__filete, .ficha-oscura .ficha-carton__filete { background: currentColor; opacity: .55; }
+.ficha-oscura .cuerpo a { text-decoration-color: currentColor; }
+.ficha-oscura .cuerpo li::marker { color: currentColor; }
 .apunte__origen { position: relative; display: inline-block; margin-top: 22px; font-family: var(--f-ui); font-weight: 600; font-size: 14px; text-decoration: none; padding: 10px 0; }
 .apunte__origen-envoltura { max-width: 760px; width: calc(100% - 2 * var(--margen)); margin: 0 auto; }
 .es-apunte .fin { padding-top: 40px; }
@@ -487,7 +507,6 @@ img { max-width: 100%; }
 .modo-paginas .final { break-before: column; }
 .modo-paginas .fin { padding-top: 0; }
 .modo-paginas .siguiente { padding: 28px 24px; }
-.modo-paginas .siguiente__circulo { width: 200px; height: 200px; right: -40px; }
 .modo-paginas .siguiente__titulo { font-size: 30px; }
 .modo-paginas .siguiente__dentro { gap: 18px; }
 .modo-paginas .relacionados { padding: 32px 0 0; }
@@ -541,8 +560,6 @@ img { max-width: 100%; }
   .modo-scroll .portadilla { order: 1; }
   .modo-scroll .libro, .modo-scroll .final-scroll, .modo-scroll .pie { order: 3; }
   .portadilla { min-height: 100vh; min-height: 100svh; align-items: flex-end; }
-  .portadilla__circulo { right: -150px; top: -60px; width: 440px; height: 440px; }
-  .portadilla__cuadro { left: 40px; top: 300px; width: 160px; height: 160px; }
   .portadilla__costura { left: 18px; }
   .portadilla__volver { display: block; position: absolute; left: 30px; top: max(36px, env(safe-area-inset-top)); z-index: 2; font-family: var(--f-ui); font-size: 22px; text-decoration: none; padding: 8px; }
   .portadilla__dentro { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 120px 22px 44px 34px; }
@@ -561,7 +578,6 @@ img { max-width: 100%; }
   .cuerpo figure { margin: 40px calc(-1 * var(--margen)); }
   .cuerpo figcaption { padding: 0 var(--margen); font-size: 14px; }
   .siguiente { padding: 56px 22px; }
-  .siguiente__circulo { width: 240px; height: 240px; right: -60px; }
   .siguiente__titulo { font-size: 38px; }
   .relacionados { padding: 44px 22px 20px; }
 

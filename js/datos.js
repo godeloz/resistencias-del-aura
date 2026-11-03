@@ -36,7 +36,7 @@
 
   function sinCuerpo(e) {
     var r = {};
-    CAMPOS_LISTA.split(',').concat('sello_id').forEach(function (k) { if (k in e) r[k] = e[k]; });
+    CAMPOS_LISTA.split(',').concat('sello_id', 'portada_diseno').forEach(function (k) { if (k in e) r[k] = e[k]; });
     if (RA.audio && RA.audio.tiene(e.audio)) r.con_audio = e.audio.duracion || true;
     return r;
   }
@@ -86,11 +86,16 @@
         }),
         // Entradas con audio (SQL 08), para el ícono de las portadas. Sin la columna, se sigue sin audio.
         sb.from('entradas').select('id,dur:audio->>duracion,archivo:audio->>archivo').eq('estado', 'publicado').not('audio', 'is', null)
+          .then(function (x) { return x.error ? { data: [] } : x; }),
+        // Portadas diseñadas en el generador (SQL 09). Sin la columna, se sigue con las automáticas.
+        sb.from('entradas').select('id,portada_diseno').eq('estado', 'publicado').not('portada_diseno', 'is', null)
           .then(function (x) { return x.error ? { data: [] } : x; })
       ]).then(function (r) {
         r.forEach(function (x) { if (x.error) throw x.error; });
         var conAudio = {}; (r[4].data || []).forEach(function (x) { if (x.archivo && String(x.archivo).trim()) conAudio[x.id] = +x.dur || true; });
         (r[2].data || []).forEach(function (e) { if (conAudio[e.id]) e.con_audio = conAudio[e.id]; });
+        var disenos = {}; (r[5].data || []).forEach(function (x) { disenos[x.id] = x.portada_diseno; });
+        (r[2].data || []).forEach(function (e) { if (disenos[e.id]) e.portada_diseno = disenos[e.id]; });
         RA.ponerSellos(r[3].data || []);
         var sello = {}; (r[3].conSello || []).forEach(function (x) { sello[x.id] = x.sello_id; });
         (r[2].data || []).forEach(function (e) { if (sello[e.id]) e.sello_id = sello[e.id]; });

@@ -37,8 +37,12 @@
       .replace(/ñ/g, 'n').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '') || 'entrada';
   };
 
+  /* Columnas que llegaron después (SQL 06, 08 y 09): se editan solo si la base ya las tiene */
+  var OPCIONALES = ['sello_id', 'audio', 'portada_diseno'];
+
   RA.adm = {
     EDITABLES: EDITABLES,
+    editables: function (e) { return EDITABLES.concat(OPCIONALES.filter(function (k) { return e && k in e; })); },
     disponible: !!sb,
 
     sesion: function () { return sb.auth.getSession().then(function (r) { return r.data.session; }); },
@@ -60,8 +64,14 @@
 
     /* Todas las entradas, en el orden del carrusel, con su copia de trabajo (sin el cuerpo) */
     entradas: function () {
-      return sb.from('entradas').select(LISTA + ',entradas_privado(trabajo)').order('orden', { ascending: true })
-        .then(ok).then(function (l) {
+      return Promise.all([
+        sb.from('entradas').select(LISTA + ',entradas_privado(trabajo)').order('orden', { ascending: true }).then(ok),
+        // Portadas del generador (SQL 09); sin la columna, la lista sigue igual
+        sb.from('entradas').select('id,portada_diseno').not('portada_diseno', 'is', null).then(function (x) { return x.error ? [] : x.data || []; })
+      ]).then(function (rr) {
+          var l = rr[0], dis = {};
+          rr[1].forEach(function (x) { dis[x.id] = x.portada_diseno; });
+          l.forEach(function (e) { if (dis[e.id]) e.portada_diseno = dis[e.id]; });
           l = l.map(privado);
           // Apuntes A1, A2…: igual que en el sitio, se cuentan solo los publicados, en el orden del carrusel
           var n = 0;
@@ -291,6 +301,14 @@
       });
     },
     guardarApariencia: function (campos) { return sb.from('apariencia').update(campos).eq('id', 1).select('*').single().then(ok); },
+    /* Plantillas de portada (A-04): viven en apariencia.extra; se leen frescas para no pisar otros cambios */
+    guardarPlantillasPortada: function (lista) {
+      return sb.from('apariencia').select('extra').eq('id', 1).single().then(ok).then(function (fila) {
+        var extra = Object.assign({}, (fila && fila.extra) || {});
+        if (lista && lista.length) extra.portadas_plantillas = lista; else delete extra.portadas_plantillas;
+        return sb.from('apariencia').update({ extra: extra }).eq('id', 1).select('*').single().then(ok);
+      });
+    },
     guardarProyecto: function (campos) { return sb.from('proyecto').update(campos).eq('id', 1).select('*').single().then(ok); }
   };
 
