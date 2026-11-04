@@ -255,7 +255,7 @@ img { max-width: 100%; }
 }
 @media (min-width: 721px) { .cuerpo { padding-left: 0; padding-right: 0; } }
 .cuerpo p { margin: 0 0 1.25em; }
-.cuerpo p:empty, .cuerpo p:has(> br:only-child) { margin: 0; height: .6em; } /* párrafos vacíos: un respiro, no un hueco */
+.cuerpo p:empty, .cuerpo p.p-vacio { margin: 0; height: .6em; overflow: hidden; } /* párrafos vacíos (RA.ordenarParrafos): un respiro, no un hueco */
 .cuerpo h2 {
   margin: 2em 0 .7em; font-family: var(--f-titulos); font-weight: var(--w-titulos); text-transform: var(--case-titulos);
   font-size: 1.55em; line-height: 1.05; letter-spacing: -.005em; hyphens: manual;

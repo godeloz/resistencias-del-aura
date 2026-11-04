@@ -169,15 +169,32 @@
   ];
   RA.CLASES_CITA = RA.ESTILOS_CITA.map(function (x) { return x[0]; }).filter(Boolean);
 
+  /* Párrafos vacíos y saltos de línea sobrantes (4 nov 2026).
+     Un párrafo sin texto (solo <br> o espacios) lleva la clase «p-vacio»: un respiro corto.
+     A un párrafo con texto se le quitan los <br> del final, que no se ven y antes hacían
+     que el CSS lo tomara por vacío (el párrafo quedaba de 0,6 em y el siguiente se le montaba encima). */
+  RA.ordenarParrafos = function (html) {
+    var d = document.createElement('template'); d.innerHTML = html || '';
+    [].slice.call(d.content.querySelectorAll('p')).forEach(function (p) {
+      var conTexto = /\S/.test((p.textContent || '').replace(/\u00a0/g, ' ')) || p.querySelector('img, sup');
+      if (!conTexto) { p.classList.add('p-vacio'); return; }
+      var u = p.lastChild;
+      while (u && ((u.nodeType === 1 && u.tagName === 'BR') || (u.nodeType === 3 && !/\S/.test(u.nodeValue)))) {
+        var ant = u.previousSibling; p.removeChild(u); u = ant;
+      }
+    });
+    return d.innerHTML;
+  };
+
   /* Limpieza del HTML de una entrada antes de mostrarlo */
   RA.limpiarHTML = function (h) {
     if (window.DOMPurify) {
-      return window.DOMPurify.sanitize(h || '', {
+      return RA.ordenarParrafos(window.DOMPurify.sanitize(h || '', {
         ALLOWED_TAGS: ['p', 'br', 'em', 'strong', 'i', 'b', 'u', 's', 'a', 'ul', 'ol', 'li', 'blockquote', 'cite',
           'h2', 'h3', 'figure', 'figcaption', 'img', 'hr', 'sup', 'sub', 'aside', 'span'],
         ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'title', 'width', 'height', 'loading'],
         ALLOW_DATA_ATTR: false
-      });
+      }));
     }
     // Sin DOMPurify (no debería pasar): se muestra como texto plano
     var d = document.createElement('div');

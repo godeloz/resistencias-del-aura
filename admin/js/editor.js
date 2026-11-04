@@ -220,6 +220,8 @@
     // El sello (SQL 06) y el audio (SQL 08) se guardan solo si la base ya tiene la columna
     // y la receta de la portada (SQL 09)
     RA.adm.editables(e).forEach(function (k) { st.campos[k] = vig[k]; });
+    // Enlace escrito a mano (4 nov 2026): si el de un borrador no es el que daría el automático, no se toca solo
+    st.slugManual = e.estado !== 'publicado' && e.slug !== RA.adm.slugLibre(Object.assign({ id: e.id }, vig), A().entradas);
     var CLAVE_RESPALDO = 'respaldo:' + e.id;
     document.title = (vig.titulo || 'Sin título') + ' · Editor';
 
@@ -315,7 +317,7 @@
       st.guardando = true; pintarEstado();
       var p;
       if (!publicada()) {
-        var nuevo = RA.adm.slugLibre(Object.assign({ id: st.e.id }, campos), A().entradas);
+        var nuevo = st.slugManual ? st.e.slug : RA.adm.slugLibre(Object.assign({ id: st.e.id }, campos), A().entradas);
         if (nuevo !== st.e.slug) campos.slug = nuevo;
         p = RA.adm.guardarEntrada(st.e.id, campos).then(function (r) {
           if (campos.slug) st.e.slug = campos.slug;
@@ -375,7 +377,7 @@
           ya ? 'Publicar cambios' : 'Publicar').then(function (si) {
           if (!si) return;
           var campos = recoger();
-          if (!ya) campos.slug = RA.adm.slugLibre(Object.assign({ id: st.e.id }, campos), A().entradas);
+          if (!ya && !st.slugManual) campos.slug = RA.adm.slugLibre(Object.assign({ id: st.e.id }, campos), A().entradas);
           return RA.adm.publicar(st.e.id, campos, ya).then(function () {
             Object.assign(st.e, campos, { estado: 'publicado', trabajo: null });
             if (!ya) st.e.publicado_en = new Date().toISOString();
@@ -1076,9 +1078,15 @@
             Object.keys(p.r).map(function (k) { return RA.iconoReaccion(k, 18) + '<b>' + p.r[k] + '</b>'; }).join(' ') + '</span>' +
             '<button type="button" data-borrar-reac="' + i + '" aria-label="Borrar las reacciones de este pasaje">×</button></div>';
         }).join('') + '</div>');
-      h += seccion('Enlace', '<code class="ed-enlace">#/leer/' + esc(st.e.slug) + '</code>' +
-        (publicada() ? '<span class="ed-nota">Fijo desde que se publicó</span>' : '<span class="ed-nota">Se ajusta solo hasta que publiques</span>'));
+      h += seccion('Enlace', '<label class="ed-enlace"><span aria-hidden="true">#/leer/</span><input type="text" data-slug value="' + esc(st.e.slug) + '"' +
+          ' maxlength="60" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Enlace de la entrada"></label>' +
+        (publicada() ? '<span class="ed-nota">Puedes cambiarlo, pero los enlaces que ya compartiste dejarán de funcionar.</span>'
+          : st.slugManual ? '<span class="ed-nota">Lo escribiste tú: ya no cambia solo. <button type="button" class="ed-enlace__auto" data-slug-auto>Volver al automático</button></span>'
+          : '<span class="ed-nota">Se ajusta solo con el número o el título hasta que lo cambies o publiques. Escríbelo y pulsa Enter.</span>'), ' data-sec="enlace"');
+      // Si se está escribiendo el enlace, se conserva lo escrito al volver a pintar el panel (p. ej., tras un guardado)
+      var activo = document.activeElement, escribiendo = activo && panel.contains(activo) && activo.matches('[data-slug]') ? { v: activo.value, a: activo.selectionStart, b: activo.selectionEnd } : null;
       panel.innerHTML = h;
+      if (escribiendo) { var campoSlug = panel.querySelector('[data-slug]'); campoSlug.value = escribiendo.v; campoSlug.focus(); try { campoSlug.setSelectionRange(escribiendo.a, escribiendo.b); } catch (x) { /* nada */ } }
       pintarPortadaMini();
     }
 
@@ -1138,6 +1146,7 @@
         return;
       }
       if (d.convertirNotas !== undefined) return convertirNotas();
+      if (d.slugAuto !== undefined) return guardarSlug(RA.adm.slugLibre(Object.assign({ id: st.e.id }, st.campos), A().entradas), false);
       if (d.audio && RA.audioAdmin) return RA.audioAdmin.accion(d.audio, apiAudio);
       if (d.patron !== undefined) return cambiarCampo('portada_patron', d.patron || null);
       if (d.modo) return cambiarCampo('modo_lectura', d.modo);
@@ -1171,13 +1180,47 @@
         });
       }
     });
+    panel.addEventListener('keydown', function (ev) {
+      if (!ev.target.matches('[data-slug]')) return;
+      if (ev.key === 'Enter') { ev.preventDefault(); ev.target.blur(); }
+      if (ev.key === 'Escape') { ev.target.value = st.e.slug; ev.target.blur(); }
+    });
     panel.addEventListener('change', function (ev) {
+      if (ev.target.matches('[data-slug]')) return cambiarSlug(ev.target.value);
       if (ev.target.dataset.gpHex === 'apunte') return cambiarCampo('portada_diseno', { v: 1, fondo: { hex: ev.target.value.toUpperCase() } });
       if (ev.target.matches('.ed-dia input')) {
         var n = Math.max(1, Math.min(999, parseInt(ev.target.value, 10) || 1));
         cambiarCampo('numero', n);
       }
     });
+
+    /* Enlace escrito a mano (4 nov 2026). En un borrador deja de ajustarse solo; en una entrada
+       publicada cambia de inmediato, después de avisar que los enlaces compartidos dejan de funcionar. */
+    function cambiarSlug(valor) {
+      var nuevo = RA.slugificar(valor);
+      if (!String(valor || '').trim() || nuevo === st.e.slug) return pintarPanel();
+      var otro = A().entradas.filter(function (x) { return x.id !== st.e.id && x.slug === nuevo; })[0];
+      if (otro) { ui().aviso('Ese enlace ya lo usa «' + (A().vigente(otro).titulo || 'otra entrada') + '»', 'error'); return pintarPanel(); }
+      if (!publicada()) return guardarSlug(nuevo, true);
+      ui().confirmar('Cambiar el enlace',
+        'La entrada pasará de <code>#/leer/' + esc(st.e.slug) + '</code> a <code>#/leer/' + esc(nuevo) + '</code> desde ya, sin tener que volver a publicar.' +
+        '<br><br>Los enlaces que ya compartiste y los marcadores que tengan los lectores dejarán de llevar a esta entrada.', 'Cambiar el enlace')
+        .then(function (si) { if (si) guardarSlug(nuevo, false); else pintarPanel(); });
+    }
+    function guardarSlug(nuevo, manual) {
+      var antes = { slug: st.e.slug, manual: st.slugManual };
+      st.slugManual = manual;   // antes de guardar, para que un guardado automático en curso no lo cambie
+      if (nuevo === st.e.slug) { pintarPanel(); return Promise.resolve(); }
+      return RA.adm.guardarEntrada(st.e.id, { slug: nuevo }).then(function () {
+        st.e.slug = nuevo;
+        A().entradas.forEach(function (x) { if (x.id === st.e.id) x.slug = nuevo; });
+        pintarPanel(); ui().aviso('Enlace cambiado');
+      }).catch(function (err) {
+        st.slugManual = antes.manual;
+        ui().aviso(err && err.code === '23505' ? 'Ese enlace ya lo usa otra entrada' : 'No se pudo cambiar el enlace: ' + (err && err.message), 'error');
+        pintarPanel();
+      });
+    }
 
     // Los guardados van en fila: cada uno manda la lista completa y no puede adelantarse al anterior
     var fila = Promise.resolve();
