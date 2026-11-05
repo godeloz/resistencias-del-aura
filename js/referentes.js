@@ -626,11 +626,14 @@
     function enlazar() {
       if (!movil) {
         cont.addEventListener('scroll', pedirVentana, { passive: true });
-        // La rueda vertical recorre el fichero mientras haya cinta en esa dirección
+        // La rueda hacia abajo baja la página como siempre; solo al llegar al final de la página
+        // empieza a recorrer el fichero hacia lo más reciente. Hacia arriba, la página sube (no atrapa al lector).
+        // Para volver hacia lo más antiguo: deslizar de lado en el trackpad, Shift + rueda, la miniatura o los botones.
         cont.addEventListener('wheel', function (ev) {
-          if (Math.abs(ev.deltaY) <= Math.abs(ev.deltaX) || ev.ctrlKey) return;
-          var max = cont.scrollWidth - cont.clientWidth;
-          if ((ev.deltaY > 0 && cont.scrollLeft < max - 1) || (ev.deltaY < 0 && cont.scrollLeft > 0)) {
+          if (Math.abs(ev.deltaY) <= Math.abs(ev.deltaX) || ev.ctrlKey || ev.shiftKey || ev.deltaY <= 0) return;
+          var alFinal = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+          if (!alFinal) return;
+          if (cont.scrollLeft < cont.scrollWidth - cont.clientWidth - 1) {
             ev.preventDefault(); cont.scrollLeft += ev.deltaY * (ev.deltaMode === 1 ? 32 : 1);
           }
         }, { passive: false });
