@@ -6,11 +6,11 @@
    ════════════════════════════════════════════════════════════════════ */
 
 /* ── Logo de PP Cultura arriba a la derecha; el menú pasa a la izquierda, junto al logo del sitio ── */
-.conv-pp { display: block; flex: none; width: auto; height: 46px; }
+.conv-pp { display: block; flex: none; width: auto; height: var(--conv-pp, 46px); }
 .cabecera .conv-pp { margin-left: 26px; }
 .con-convocatoria .cabecera nav { margin-left: 30px; }
 .con-convocatoria .cabecera .conv-pp { margin-left: auto; }
-.barra .conv-pp { height: 34px; margin-left: -4px; }
+.barra .conv-pp { height: min(var(--conv-pp, 46px), 40px); margin-left: -4px; }
 
 /* ── Pie de créditos ──────────────────────────────────────────────── */
 .conv {
@@ -25,12 +25,13 @@
   border-top: 1px solid var(--linea);
 }
 .conv__leyenda { margin: 0; max-width: 48ch; font-weight: 400; font-size: 12.5px; line-height: 1.4; letter-spacing: .01em; }
-.conv__escudo { display: block; flex: none; height: 60px; width: auto; }
+/* El alto lo elige el autor en Apariencia → Convocatoria (variables puestas por convocatoria.js) */
+.conv__escudo { display: block; flex: none; height: var(--conv-escudo, 60px); width: auto; }
 
 /* Escudo con contenedor: la pestaña se apoya en el borde inferior, como en la guía */
 .conv--contenedor .conv__cuerpo { align-items: flex-end; padding-top: 10px; padding-bottom: 0; }
 .conv--contenedor .conv__leyenda { align-self: center; padding-bottom: env(safe-area-inset-bottom); }
-.conv--contenedor .conv__escudo { height: 74px; }
+.conv--contenedor .conv__escudo { height: calc(var(--conv-escudo, 60px) * 1.24); }
 
 .conv__pestana {
   position: absolute; right: var(--margen); bottom: 100%; margin-bottom: -1px;
@@ -52,13 +53,14 @@ html.con-convocatoria body { padding-bottom: var(--pie-conv, 0px); }
 .con-convocatoria .vista-previa { bottom: calc(10px + var(--pie-flot, 0px)); }
 
 @media (max-width: 720px) {
-  .conv-pp { height: 40px; }
+  .conv-pp { height: var(--conv-pp-mov, 40px); }
+  .barra .conv-pp { height: min(var(--conv-pp-mov, 40px), 34px); }
   .cabecera .conv-pp { margin-left: 18px; }
   .con-convocatoria .cabecera nav { margin-left: 18px; }
   .conv__cuerpo { gap: 16px; padding: 10px 16px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
   .conv__leyenda { font-size: 11px; line-height: 1.35; }
-  .conv__escudo { height: 48px; }
-  .conv--contenedor .conv__escudo { height: 60px; }
+  .conv__escudo { height: var(--conv-escudo-mov, 48px); }
+  .conv--contenedor .conv__escudo { height: calc(var(--conv-escudo-mov, 48px) * 1.24); }
   .conv__pestana { right: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .conv, .conv__pestana svg { transition: none; } }

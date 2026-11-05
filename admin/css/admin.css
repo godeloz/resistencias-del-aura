@@ -702,3 +702,27 @@ body.ap-grande-abierta { overflow: hidden; }
   .gp-vista--movil .gp-marco { max-width: 200px; }
   .gp-ventana { padding: 16px 14px; }
 }
+
+/* Convocatoria · tamaño de los logos */
+.ap-tam__barra { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.ap-tam { display: flex; flex-direction: column; gap: 10px; }
+.ap-tam__fila { display: grid; grid-template-columns: 170px 1fr 58px; gap: 12px; align-items: center; font-size: 14px; }
+.ap-tam__fila input[type="range"] { width: 100%; min-height: 32px; accent-color: var(--a-texto); cursor: pointer; }
+.ap-tam__fila input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
+.ap-tam__fila output { font: 600 14px var(--f-ui); text-align: right; font-variant-numeric: tabular-nums; }
+.ap-muestra { width: 100%; border: 1px solid var(--a-linea); overflow: hidden; }
+.ap-muestra--movil { width: 390px; max-width: 100%; }
+.ap-muestra__cab { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; min-height: 60px; }
+.ap-muestra__cab img, .ap-muestra__pie img { display: block; flex: none; width: auto; transition: height .12s; }
+.ap-muestra__logo { display: flex; }
+.ap-muestra__logo::before, .ap-muestra__logo::after { content: ''; width: 16px; height: 16px; border-radius: 50%; background: var(--a); }
+.ap-muestra__logo::after { margin-left: -8px; background: var(--b); mix-blend-mode: multiply; }
+.ap-muestra__pie { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 70px; padding: 12px 18px; border-top: 1px solid rgba(29,29,58,.14); }
+.ap-muestra__pie p { margin: 0; max-width: 48ch; font: 400 12.5px/1.4 var(--f-ui); letter-spacing: .01em; }
+.ap-muestra--movil .ap-muestra__pie { gap: 16px; padding: 10px 16px; }
+.ap-muestra--movil .ap-muestra__pie p { font-size: 11px; line-height: 1.35; }
+.ap-muestra__pie--cont { align-items: flex-end; padding-bottom: 0; }
+.ap-muestra__pie--cont p { align-self: center; }
+.ap-muestra__nota { margin-top: -4px; }
+.ap-enlace { border: 0; padding: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+@media (max-width: 720px) { .ap-tam__fila { grid-template-columns: 1fr 58px; } .ap-tam__fila span { grid-column: 1 / -1; } }

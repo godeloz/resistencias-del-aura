@@ -184,9 +184,54 @@
         '<h3 class="ap-lbl ap-sub">Escudo de la Alcaldía · fondo claro</h3>' + logos('escudo_claro', CV.ESCUDOS, pal.papel) +
         '<h3 class="ap-lbl ap-sub">Escudo de la Alcaldía · fondo oscuro</h3>' + logos('escudo_oscuro', CV.ESCUDOS, T.fondosSitio.noche) +
         '<span class="ed-nota">«Fondo oscuro» se usa cuando el sitio o el lector están en tema noche.</span>' +
+        htmlTamanos(c, pal) +
         '<h3 class="ap-lbl ap-sub">Leyenda obligatoria <small>(texto exacto de la convocatoria; no se edita)</small></h3>' +
         '<p class="ap-conv-leyenda">' + esc(CV.LEYENDA) + '</p></section>';
       return h;
+    }
+    /* Tamaño de los logos: una barra por logo, con pestañas Computador / Celular.
+       El celular puede seguir al computador en proporción (la de los tamaños originales) o tener sus propios tamaños.
+       La muestra está en tamaño real: en Celular mide 390 px, el ancho de un teléfono. */
+    var dispConv = 'esc';
+    function htmlTamanos(c, pal) {
+      var CV = RA.convocatoria, L = CV.LIMITES, mov = dispConv === 'mov', prop = c.tam_movil === 'proporcional';
+      var kE = mov ? 'escudo_mov' : 'escudo_esc', kP = mov ? 'pp_mov' : 'pp_esc', fijo = mov && prop;
+      function barra(k, nombre, max) {
+        return '<label class="ap-tam__fila"><span>' + nombre + '</span>' +
+          '<input type="range" data-conv-tam="' + k + '" min="' + L[k][0] + '" max="' + max + '" step="1" value="' + c[k] + '"' + (fijo ? ' disabled' : '') + ' aria-label="' + nombre + ' en ' + (mov ? 'el celular' : 'el computador') + '">' +
+          '<output data-conv-salida="' + k + '">' + c[k] + ' px</output></label>';
+      }
+      var esc1 = c.escudo_claro, cont = !!CV.ESCUDOS[esc1].contenedor;
+      var fondoPie = 'color-mix(in srgb, ' + pal.papel + ' 94%, ' + pal.tinta + ')';
+      return '<h3 class="ap-lbl ap-sub">Tamaño de los logos</h3>' +
+        '<div class="ap-tam__barra"><span class="ed-seg ap-seg" role="group" aria-label="Pantalla">' +
+          '<button type="button" data-conv-disp="esc" aria-pressed="' + !mov + '">Computador</button>' +
+          '<button type="button" data-conv-disp="mov" aria-pressed="' + mov + '">Celular</button></span>' +
+          '<button type="button" class="a-boton a-boton--fino" data-conv-tam-original>Tamaños originales</button></div>' +
+        (mov ? '<label class="ap-check"><input type="checkbox" data-conv-prop' + (prop ? ' checked' : '') + '> <span>Igual que en el computador, en proporción <span class="ap-ayuda">(un poco más pequeños, como en el diseño original)</span></span></label>' : '') +
+        '<div class="ap-tam">' + barra(kE, 'Escudo de la Alcaldía', L[kE][1]) + barra(kP, 'Sello de PP', c[kE]) + '</div>' +
+        '<p class="ed-nota">' + (fijo ? 'Desmarca la casilla para elegir otros tamaños en el celular. ' : '') +
+          'El sello de PP llega como máximo al alto del escudo: la guía pide que ningún logo se vea más grande que el escudo de la Alcaldía.</p>' +
+        '<div class="ap-muestra' + (mov ? ' ap-muestra--movil' : '') + '" style="background:' + pal.papel + ';color:' + pal.tinta + '" aria-hidden="true">' +
+          '<div class="ap-muestra__cab"><span class="ap-muestra__logo" style="--a:' + pal.tituloA + ';--b:' + pal.tituloB + '"></span>' +
+            '<img data-conv-muestra="' + kP + '" src="../' + CV.DIR + c.pp_claro + '.png" style="height:' + c[kP] + 'px" alt=""></div>' +
+          '<div class="ap-muestra__pie' + (cont ? ' ap-muestra__pie--cont' : '') + '" style="background:' + fondoPie + '">' +
+            '<p>' + esc(CV.LEYENDA) + '</p>' +
+            '<img data-conv-muestra="' + kE + '" src="../' + CV.DIR + esc1 + '.png" style="height:' + Math.round(c[kE] * (cont ? 1.24 : 1)) + 'px" alt=""></div>' +
+        '</div>' +
+        '<p class="ed-nota ap-muestra__nota">Muestra en tamaño real' + (mov ? ', con el ancho de un celular (390 px). La vista previa de la derecha también es de celular.' :
+          '. Para verlo en la página completa, abre la vista previa de <button type="button" class="ap-enlace" data-conv-ver-esc>escritorio</button>.') + '</p>';
+    }
+    function ajustarTamano(k, v) {
+      ap.extra = ap.extra || {};
+      var c = Object.assign({}, ap.extra.convocatoria || {}), CV = RA.convocatoria, actual = CV.config(ap);
+      // Al pasar a tamaños propios del celular, se parte de los que ya tenía en proporción
+      if (k.slice(-4) === '_mov' && actual.tam_movil === 'proporcional') { c.tam_movil = 'propio'; c.escudo_mov = actual.escudo_mov; c.pp_mov = actual.pp_mov; }
+      c[k] = v;
+      var esE = k.indexOf('escudo_') === 0, kP = 'pp_' + k.split('_')[1];
+      if (esE && (c[kP] == null ? actual[kP] : c[kP]) > v) c[kP] = v;   // el sello nunca más alto que el escudo
+      ap.extra.convocatoria = c;
+      return CV.config(ap);
     }
     function cambiarConv(k, v) {
       ap.extra = ap.extra || {};
@@ -328,6 +373,34 @@
       cambiarConv(k, v === 'true' ? true : (v === 'false' ? false : v));
     });
     secc.addEventListener('change', function (ev) { if (ev.target.hasAttribute('data-conv-activa')) cambiarConv('activa', ev.target.checked); });
+    secc.addEventListener('input', function (ev) {
+      var t = ev.target, k = t.getAttribute('data-conv-tam'); if (!k) return;
+      var c = ajustarTamano(k, Number(t.value)), kP = 'pp_' + k.split('_')[1], cont = !!RA.convocatoria.ESCUDOS[c.escudo_claro].contenedor;
+      [k, kP].forEach(function (x) {
+        var o = secc.querySelector('[data-conv-salida="' + x + '"]'); if (o) o.textContent = c[x] + ' px';
+        var r = secc.querySelector('[data-conv-tam="' + x + '"]'); if (r && x !== k) { r.value = c[x]; }
+        var m = secc.querySelector('[data-conv-muestra="' + x + '"]'); if (m) m.style.height = Math.round(c[x] * (x.indexOf('escudo') === 0 && cont ? 1.24 : 1)) + 'px';
+      });
+      if (k.indexOf('escudo_') === 0) { var rp = secc.querySelector('[data-conv-tam="' + kP + '"]'); if (rp) rp.max = c[k]; }
+      estado(); clearTimeout(secc._tc); secc._tc = setTimeout(enviar, 120);
+    });
+    secc.addEventListener('change', function (ev) {
+      if (!ev.target.hasAttribute('data-conv-prop')) return;
+      var CV = RA.convocatoria, actual = CV.config(ap), c = Object.assign({}, ap.extra.convocatoria || {});
+      if (ev.target.checked) { c.tam_movil = 'proporcional'; delete c.escudo_mov; delete c.pp_mov; }
+      else { c.tam_movil = 'propio'; c.escudo_mov = actual.escudo_mov; c.pp_mov = actual.pp_mov; }
+      ap.extra.convocatoria = c; pintar(); enviar();
+    });
+    secc.addEventListener('click', function (ev) {
+      var d = ev.target.closest('[data-conv-disp]');
+      if (d) { dispConv = d.getAttribute('data-conv-disp'); pintar(); return; }
+      if (ev.target.closest('[data-conv-tam-original]')) {
+        var c = Object.assign({}, ap.extra.convocatoria || {});
+        ['escudo_esc', 'pp_esc', 'escudo_mov', 'pp_mov', 'tam_movil'].forEach(function (k) { delete c[k]; });
+        ap.extra.convocatoria = c; pintar(); enviar(); return;
+      }
+      if (ev.target.closest('[data-conv-ver-esc]')) abrirGrande();
+    });
     secc.addEventListener('click', function (ev) {
       var o = ev.target.closest('[data-extra-op]'); if (!o) return;
       ap.extra = ap.extra || {}; ap.extra[o.getAttribute('data-extra-op')] = o.getAttribute('data-valor');

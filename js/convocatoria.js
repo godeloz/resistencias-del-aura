@@ -33,8 +33,38 @@
     pp_claro: 'pp-2', pp_oscuro: 'pp-blanco',
     pp_donde: 'inicio',       // 'inicio' | 'todas'
     plegado_inicio: false,    // cómo se ve el pie al llegar al inicio
-    plegado_contenido: true   // y al llegar a la lectura, los referentes y demás páginas
+    plegado_contenido: true,  // y al llegar a la lectura, los referentes y demás páginas
+    // Tamaños: alto en píxeles. «Computador» es todo lo que mide más de 720 px de ancho.
+    escudo_esc: 60, pp_esc: 46,
+    tam_movil: 'proporcional',   // 'proporcional' (el celular sigue al computador) | 'propio'
+    escudo_mov: 48, pp_mov: 40
   };
+  /* Límites de las barras. El sello de PP nunca puede ser más alto que el escudo (lo pide la guía). */
+  var LIMITES = {
+    escudo_esc: [44, 100], escudo_mov: [36, 76],
+    pp_esc: [30, 100], pp_mov: [26, 76]
+  };
+  /* «En proporción»: el celular conserva la relación de los tamaños originales (escudo 60 → 48, PP 46 → 40) */
+  var PROPORCION_MOVIL = { escudo: DEFECTO.escudo_mov / DEFECTO.escudo_esc, pp: DEFECTO.pp_mov / DEFECTO.pp_esc };
+  function numero(v, k) {
+    var n = Math.round(Number(v)), l = LIMITES[k];
+    if (!isFinite(n)) n = DEFECTO[k];
+    return Math.max(l[0], Math.min(l[1], n));
+  }
+  function tamanos(c) {
+    var r = { tam_movil: c.tam_movil === 'propio' ? 'propio' : 'proporcional' };
+    r.escudo_esc = numero(c.escudo_esc == null ? DEFECTO.escudo_esc : c.escudo_esc, 'escudo_esc');
+    r.pp_esc = Math.min(numero(c.pp_esc == null ? DEFECTO.pp_esc : c.pp_esc, 'pp_esc'), r.escudo_esc);
+    if (r.tam_movil === 'proporcional') {
+      r.escudo_mov = numero(r.escudo_esc * PROPORCION_MOVIL.escudo, 'escudo_mov');
+      r.pp_mov = numero(r.pp_esc * PROPORCION_MOVIL.pp, 'pp_mov');
+    } else {
+      r.escudo_mov = numero(c.escudo_mov == null ? DEFECTO.escudo_mov : c.escudo_mov, 'escudo_mov');
+      r.pp_mov = numero(c.pp_mov == null ? DEFECTO.pp_mov : c.pp_mov, 'pp_mov');
+    }
+    r.pp_mov = Math.min(r.pp_mov, r.escudo_mov);
+    return r;
+  }
 
   function config(apariencia) {
     var c = (apariencia && apariencia.extra && apariencia.extra.convocatoria) || {}, r = {};
@@ -46,7 +76,7 @@
     r.pp_donde = c.pp_donde === 'todas' ? 'todas' : 'inicio';
     r.plegado_inicio = typeof c.plegado_inicio === 'boolean' ? c.plegado_inicio : DEFECTO.plegado_inicio;
     r.plegado_contenido = typeof c.plegado_contenido === 'boolean' ? c.plegado_contenido : DEFECTO.plegado_contenido;
-    return r;
+    return Object.assign(r, tamanos(c));
   }
 
   /* Cómo se ve el pie al llegar: lo que el autor eligió para el inicio y para el contenido.
@@ -128,10 +158,14 @@
     raiz.classList.toggle('con-convocatoria', c.activa);
     if (!c.activa) {
       if (pie) { pie.remove(); pie = null; aplicado = null; if (observador) observador.disconnect(); }
-      ['--pie-conv', '--pie-tab', '--pie-flot'].forEach(function (v) { raiz.style.removeProperty(v); });
+      ['--pie-conv', '--pie-tab', '--pie-flot', '--conv-escudo', '--conv-escudo-mov', '--conv-pp', '--conv-pp-mov'].forEach(function (v) { raiz.style.removeProperty(v); });
       return;
     }
     if (!pie) pie = crearPie();
+    raiz.style.setProperty('--conv-escudo', c.escudo_esc + 'px');
+    raiz.style.setProperty('--conv-escudo-mov', c.escudo_mov + 'px');
+    raiz.style.setProperty('--conv-pp', c.pp_esc + 'px');
+    raiz.style.setProperty('--conv-pp-mov', c.pp_mov + 'px');
     var id = tema && tema.oscuro ? c.escudo_oscuro : c.escudo_claro;
     var img = pie.querySelector('.conv__escudo');
     if (img.getAttribute('src') !== DIR + id + '.png') img.src = DIR + id + '.png';
@@ -155,7 +189,7 @@
   }
 
   RA.convocatoria = {
-    LEYENDA: LEYENDA, ESCUDOS: ESCUDOS, PPS: PPS, DEFECTO: DEFECTO, DIR: DIR,
+    LEYENDA: LEYENDA, ESCUDOS: ESCUDOS, PPS: PPS, DEFECTO: DEFECTO, DIR: DIR, LIMITES: LIMITES, PROPORCION_MOVIL: PROPORCION_MOVIL,
     config: config, actualizar: actualizar, ppHTML: ppHTML, vista: vista,
     activa: function (apariencia) { return config(apariencia).activa; }
   };
