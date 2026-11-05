@@ -56,7 +56,7 @@
         '<div class="ap-secciones"></div></div>' +
       '<aside class="ap-vista"><div class="ap-vista__barra"><span class="ap-lbl">Vista previa</span>' +
         '<span class="ed-seg ap-seg" role="group" aria-label="Tamaño"><button type="button" data-tam="movil">Móvil</button><button type="button" data-tam="escritorio">Escritorio</button></span>' +
-        '<span class="ed-seg ap-seg" role="group" aria-label="Página"><button type="button" data-pag="inicio">Inicio</button><button type="button" data-pag="capitulo"' + (primera ? '' : ' disabled title="Publica una entrada para verla aquí"') + '>Capítulo</button></span></div>' +
+        '<span class="ed-seg ap-seg" role="group" aria-label="Página"><button type="button" data-pag="inicio">Inicio</button><button type="button" data-pag="capitulo"' + (primera ? '' : ' disabled title="Publica una entrada para verla aquí"') + '>Capítulo</button><button type="button" data-pag="referentes">Referentes</button></span></div>' +
         '<div class="ap-marco"><iframe title="Vista previa del sitio" src="../index.html?prevista=1"></iframe></div>' +
         '<p class="ed-nota">Es el sitio real con tus entradas publicadas. Los cambios solo se guardan al pulsar «Publicar cambios».</p></aside></div>';
 
@@ -118,6 +118,30 @@
           return '<div class="ap-color"><input type="color" data-color-apunte="' + c.clave + '" value="' + c.hex.toLowerCase() + '" aria-label="' + esc(c.nombre) + '"><span>' + esc(c.nombre) + '</span>' +
             (cambiado ? '<button type="button" data-color-apunte-quitar="' + c.clave + '" title="Volver al color original">original</button>' : '') + '</div>';
         }).join('') + '</div></section>';
+      // Página de Referentes (A-18): vista con la que abre y color de las tarjetas. Todo en «extra»
+      var vr = ex.vista_referentes || 'muro', rc = ex.referentes_color || 'rotacion', rt = ex.referentes_tono || 'pleno',
+        rp = ex.referentes_paleta || 'sitio', re = ex.referentes_etiquetas_color || 'paleta';
+      function opRef(k, actual, l) {
+        return '<div class="ap-fila">' + l.map(function (v) {
+          return '<button type="button" class="ap-op" data-extra-op="' + k + '" data-valor="' + v[0] + '"' + anillo(actual === v[0]) + '><b>' + v[1] + '</b>' + (v[2] ? '<small>' + v[2] + '</small>' : '') + '</button>';
+        }).join('') + '</div>';
+      }
+      h += '<section class="ap-sec"><h2 class="ap-lbl">Página de Referentes</h2>' +
+        '<h3 class="ap-lbl ap-sub">Vista con la que abre</h3>' +
+        opRef('vista_referentes', vr, [['muro', 'Muro', 'tarjetas de alto libre'], ['cuadricula', 'Cuadrícula', 'todas del mismo tamaño'], ['lista', 'Lista', 'una fila por referente'], ['fichero', 'Fichero', 'la cinta, de lo más antiguo a lo más reciente']]) +
+        '<span class="ed-nota">El lector puede cambiar de vista mientras recorre la página; cuando vuelve otro día, abre de nuevo con esta.</span>' +
+        '<h3 class="ap-lbl ap-sub">Color de las tarjetas</h3>' +
+        opRef('referentes_color', rc, [['rotacion', 'En rotación', 'cada ficha en una tinta distinta'], ['tipo', 'Por tipo', 'cada tipo en una tinta'], ['etiquetas', 'Por etiquetas', 'con varias etiquetas, un degradado']]) +
+        '<h3 class="ap-lbl ap-sub">Tono</h3>' +
+        opRef('referentes_tono', rt, [['pleno', 'Tinta plena', 'la tarjeta entera en su color'], ['pastel', 'Pastel', 'el color aclarado sobre el papel']]) +
+        (rc === 'etiquetas' ? '<h3 class="ap-lbl ap-sub">Colores de las etiquetas</h3>' +
+          opRef('referentes_etiquetas_color', re, [['paleta', 'De la paleta', 'las más usadas, en tintas distintas'], ['moodboard', 'Los del Moodboard', 'el color que cada etiqueta tiene allá']]) : '') +
+        '<h3 class="ap-lbl ap-sub">Paleta de los referentes <small>(puede ser distinta a la del sitio)</small></h3><div class="ap-fila">' +
+          [['sitio', 'La del sitio']].concat(Object.keys(T.paletas).map(function (k) { return [k, T.paletas[k].nombre]; })).map(function (v) {
+            var p = v[0] === 'sitio' ? pal : T.paletas[v[0]];
+            return '<button type="button" class="ap-op ap-paleta" data-extra-op="referentes_paleta" data-valor="' + v[0] + '"' + anillo(rp === v[0]) + ' style="background:' + p.papel + ';color:' + p.tinta + '">' +
+              '<span class="ap-tiras">' + p.cuadernos.concat([p.apunte]).map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') + '</span><b>' + v[1] + '</b></button>';
+          }).join('') + '</div></section>';
       // Audio (A-13): dónde están los archivos. Se guarda en extra.audio_base. Va antes de los sellos (pintarSellos usa la última sección)
       h += '<section class="ap-sec"><h2 class="ap-lbl">Audio de las entradas</h2>' +
         '<label class="a-campo">Dirección del repositorio de audio<input type="url" data-extra-texto="audio_base" value="' + esc(ex.audio_base || '') + '" placeholder="https://tu-usuario.github.io/resistencias-del-aura-audio/" spellcheck="false"></label>' +
@@ -242,7 +266,7 @@
       caja.style.height = Math.round(alto * k) + 'px';
       if (grande) ajustarGrande();
     }
-    function hashDe(p) { return p === 'capitulo' && primera ? '#/leer/' + primera.slug : '#/'; }
+    function hashDe(p) { return p === 'capitulo' && primera ? '#/leer/' + primera.slug : p === 'referentes' ? '#/referentes' : '#/'; }
     function irA(p) {
       vista.pagina = p;
       [marco, grande && grande.querySelector('iframe')].forEach(function (f) {
@@ -262,7 +286,7 @@
       grande.className = 'ap-grande';
       grande.setAttribute('role', 'dialog'); grande.setAttribute('aria-modal', 'true'); grande.setAttribute('aria-label', 'Vista previa de escritorio');
       grande.innerHTML = '<div class="ap-grande__barra"><span class="ap-lbl">Vista previa · escritorio</span>' +
-        '<span class="ed-seg ap-seg" role="group" aria-label="Página"><button type="button" data-pag="inicio">Inicio</button><button type="button" data-pag="capitulo"' + (primera ? '' : ' disabled title="Publica una entrada para verla aquí"') + '>Capítulo</button></span>' +
+        '<span class="ed-seg ap-seg" role="group" aria-label="Página"><button type="button" data-pag="inicio">Inicio</button><button type="button" data-pag="capitulo"' + (primera ? '' : ' disabled title="Publica una entrada para verla aquí"') + '>Capítulo</button><button type="button" data-pag="referentes">Referentes</button></span>' +
         '<button type="button" class="a-boton" data-grande="movil">Volver a móvil</button>' +
         '<button type="button" class="a-boton a-boton--primario" data-grande="cerrar">× Cerrar</button></div>' +
         '<div class="ap-grande__caja"><iframe title="Vista previa de escritorio" src="../index.html?prevista=1' + hashDe(vista.pagina) + '"></iframe></div>';
@@ -304,6 +328,12 @@
       cambiarConv(k, v === 'true' ? true : (v === 'false' ? false : v));
     });
     secc.addEventListener('change', function (ev) { if (ev.target.hasAttribute('data-conv-activa')) cambiarConv('activa', ev.target.checked); });
+    secc.addEventListener('click', function (ev) {
+      var o = ev.target.closest('[data-extra-op]'); if (!o) return;
+      ap.extra = ap.extra || {}; ap.extra[o.getAttribute('data-extra-op')] = o.getAttribute('data-valor');
+      pintar(); enviar();
+      if (/referentes/.test(o.getAttribute('data-extra-op')) && vista.pagina !== 'referentes') irA('referentes');
+    });
     secc.addEventListener('click', function (ev) {
       var b = ev.target.closest('[data-campo]'); if (!b) return;
       ap[b.getAttribute('data-campo')] = b.getAttribute('data-valor');

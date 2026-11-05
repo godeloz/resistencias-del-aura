@@ -3,7 +3,7 @@
    Rutas:  #/                inicio
            #/cuadernos       inicio, en el carrusel
            #/leer/<slug>     capítulo o apunte
-           #/referentes      universo de referentes (por definir)
+           #/referentes      universo de referentes (js/referentes.js): Muro, Cuadrícula, Lista y Fichero
            #/entrar          acceso del autor (fase 3)
    ════════════════════════════════════════════════════════════════════ */
 (function () {
@@ -74,14 +74,18 @@
 
   function enrutar() {
     if (S.limpiar) { S.limpiar(); S.limpiar = null; }
-    var h = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
+    // La consulta (?v=fichero&q=…) solo la usan los referentes; se separa antes de decodificar
+    var crudo = location.hash.replace(/^#\/?/, ''), qi = crudo.indexOf('?');
+    var consulta = qi >= 0 ? crudo.slice(qi + 1) : '';
+    if (qi >= 0) crudo = crudo.slice(0, qi);
+    var h = decodeURIComponent(crudo);
     var partes = h.split('/');
     if (RA.convocatoria) RA.convocatoria.vista(h === '' || h === 'cuadernos' ? 'inicio' : 'contenido');
     if (h === '' ) return pintarInicio(false);
     if (h === 'cuadernos') return pintarInicio(true);
     if (partes[0] === 'leer' && partes[1]) return pintarEntrada(partes[1]);
     if (partes[0] === 'vista' && partes[1]) return pintarEntrada(null, null, partes[1]);
-    if (partes[0] === 'referentes') return partes[1] === 'r' ? pintarReferentes('', partes[2] || '') : pintarReferentes(partes[1] || '');
+    if (partes[0] === 'referentes') return partes[1] === 'r' ? pintarReferentes('', partes[2] || '', consulta) : pintarReferentes(partes[1] || '', '', consulta);
     if (h === 'entrar') { location.href = 'admin/index.html'; return; }
     pintarMensaje('No encontrado', 'Esa página no existe.', false, true);
   }
@@ -287,89 +291,22 @@
         RA.iconoReferentes(22) + '<span class="solo-lector">Referentes</span></a></nav>' +
       (RA.convocatoria ? RA.convocatoria.ppHTML(S.sitio.apariencia, S.tema, activa === 'referentes' ? 'referentes' : 'inicio') : '') + '</header>';
   }
-  function pintarReferentes(slugFiltro, refId) {
+  function pintarReferentes(slugFiltro, refId, consulta) {
     titulo('Referentes');
     S.app.innerHTML = '<div class="pag-referentes">' + cabeceraSitio('referentes') + '<div class="cargando"></div></div>';
     window.scrollTo(0, 0);
+    var vigente = true;
+    S.limpiar = function () { vigente = false; };
     RA.datos.cargarReferentes().then(function (U) {
-      var tipos = {}; U.tipos.forEach(function (t) { tipos[t.id] = t; });
-      var etq = {}; U.etiquetas.forEach(function (t) { etq[t.id] = t; });
-      var etqDe = {}, conteoEtq = {};
-      U.pares.forEach(function (p) { if (!etq[p.etiqueta_id]) return; (etqDe[p.referente_id] = etqDe[p.referente_id] || []).push(p.etiqueta_id); });
-      var citasDe = {}, refsDe = {};
-      U.citas.forEach(function (c) {
-        var e = S.porId[c.entrada_id]; if (!e) return;   // solo entradas publicadas
-        (citasDe[c.referente_id] = citasDe[c.referente_id] || []).push(e);
-        (refsDe[e.slug] = refsDe[e.slug] || {})[c.referente_id] = 1;
+      if (!vigente) return;
+      var limpiar = RA.referentes.pintar({
+        raiz: S.app.querySelector('.pag-referentes'), S: S, U: U,
+        cabecera: cabeceraSitio('referentes'), tituloHTML: tituloEnLineas('Referentes'), pie: pie(),
+        cuaderno: slugFiltro, refId: refId, consulta: consulta, prevista: PREVISTA,
+        vistaDefecto: (S.sitio.apariencia.extra || {}).vista_referentes,
+        extra: S.sitio.apariencia.extra || {}
       });
-      var refs = U.referentes;
-      refs.forEach(function (r) { (etqDe[r.id] || []).forEach(function (id) { conteoEtq[id] = (conteoEtq[id] || 0) + 1; }); });
-      var conteoTipo = {}; refs.forEach(function (r) { conteoTipo[r.tipo_id] = (conteoTipo[r.tipo_id] || 0) + 1; });
-      var f = { tipo: '', etq: '', cuaderno: S.porSlug[slugFiltro] ? slugFiltro : '', ref: refId || '' };
-      var cuadernosConCitas = S.sitio.entradas.filter(function (e) { return refsDe[e.slug]; });
-      var topEtq = Object.keys(conteoEtq).sort(function (a, b) { return conteoEtq[b] - conteoEtq[a]; }).slice(0, 18);
-      var raiz = S.app.querySelector('.pag-referentes');
-      var tit = tituloEnLineas('Referentes');
-      raiz.innerHTML = cabeceraSitio('referentes') +
-        '<section class="rf-heroe"><div class="registro"><h1 class="registro__a">' + tit + '</h1><span class="registro__b" aria-hidden="true">' + tit + '</span></div>' +
-        '<p class="rf-sub"></p></section>' +
-        (refs.length ? '<div class="rf-controles">' +
-          '<div class="rf-chips" role="group" aria-label="Tipo"><button type="button" data-tipo="" aria-pressed="true">Todos <span>' + refs.length + '</span></button>' +
-            U.tipos.filter(function (t) { return conteoTipo[t.id]; }).map(function (t) {
-              return '<button type="button" data-tipo="' + esc(t.id) + '" aria-pressed="false"><i style="background:' + esc(t.color) + '"></i>' + esc(t.nombre) + ' <span>' + conteoTipo[t.id] + '</span></button>';
-            }).join('') + '</div>' +
-          (cuadernosConCitas.length ? '<label class="rf-cuaderno">Citados en <select><option value="">todos los cuadernos</option>' + cuadernosConCitas.map(function (e) {
-            return '<option value="' + esc(e.slug) + '"' + (e.slug === f.cuaderno ? ' selected' : '') + '>' + esc(RA.antetitulo(e) + ' · ' + e.titulo) + '</option>';
-          }).join('') + '</select></label>' : '') +
-          (topEtq.length ? '<div class="rf-etiquetas" role="group" aria-label="Etiquetas">' + topEtq.map(function (id) {
-            return '<button type="button" data-etq="' + esc(id) + '" aria-pressed="false">#' + esc(etq[id].nombre) + '</button>';
-          }).join('') + '</div>' : '') + '</div>' : '') +
-        '<div class="rf-muro" aria-live="polite"></div>' + pie();
-      function pintarMuro() {
-        var l = refs.filter(function (r) {
-          if (f.tipo && r.tipo_id !== f.tipo) return false;
-          if (f.etq && (etqDe[r.id] || []).indexOf(f.etq) < 0) return false;
-          if (f.cuaderno && !(refsDe[f.cuaderno] || {})[r.id]) return false;
-          if (f.ref && r.id !== f.ref) return false;
-          return true;
-        });
-        var e = S.porSlug[f.cuaderno];
-        if (f.ref) { raiz.querySelector('.rf-sub').innerHTML = l.length ? 'Un referente citado en los cuadernos · <a href="#/referentes">ver todos</a>' : 'Este referente no está disponible · <a href="#/referentes">ver todos</a>'; }
-        else raiz.querySelector('.rf-sub').textContent = !refs.length ? 'Muy pronto, las lecturas, imágenes y datos que acompañan la investigación.'
-          : e ? l.length + (l.length === 1 ? ' referente citado' : ' referentes citados') + ' en ' + RA.antetitulo(e) + ': «' + e.titulo + '»'
-          : l.length + (l.length === 1 ? ' lectura, imagen, dato o enlace' : ' lecturas, imágenes, datos y enlaces') + ' que acompañan la investigación';
-        raiz.querySelector('.rf-muro').innerHTML = l.map(function (r) {
-          var t = tipos[r.tipo_id] || { color: 'var(--tA)', nombre: '' }, img = RA.urlImagen(r.imagen);
-          var cuerpo = String(r.cuerpo || ''); if (cuerpo.length > 320) cuerpo = cuerpo.slice(0, 318).replace(/\s+\S*$/, '') + '…';
-          var meta = [r.autor, r.fuente, r.anio].filter(Boolean).join(' · ');
-          var enlace = /^https?:/i.test(r.url || '') ? r.url : '';
-          return '<article class="rf-card" style="--rf:' + esc(t.color) + '">' +
-            (img ? '<img class="rf-card__img" src="' + esc(img) + '" alt="" loading="lazy"' + (r.imagen_w && r.imagen_h ? ' width="' + r.imagen_w + '" height="' + r.imagen_h + '"' : '') + '>' : '') +
-            '<div class="rf-card__cuerpo"><span class="antetitulo"><i style="background:' + esc(t.color) + '"></i>' + esc(t.nombre) + '</span>' +
-            '<h2 class="rf-card__titulo">' + (enlace ? '<a href="' + esc(enlace) + '" target="_blank" rel="noopener">' + esc(r.titulo || 'Sin título') + ' <span aria-hidden="true">↗</span></a>' : esc(r.titulo || 'Sin título')) + '</h2>' +
-            (meta ? '<p class="rf-card__meta">' + esc(meta) + '</p>' : '') +
-            (cuerpo ? '<p class="rf-card__texto">' + esc(cuerpo) + '</p>' : '') +
-            ((etqDe[r.id] || []).length ? '<p class="rf-card__etq">' + etqDe[r.id].map(function (id) { return '#' + esc(etq[id].nombre); }).join(' ') + '</p>' : '') +
-            ((citasDe[r.id] || []).length ? '<p class="rf-card__citas">En ' + citasDe[r.id].map(function (x) {
-              return '<a href="#/leer/' + encodeURIComponent(x.slug) + '" style="--c:' + RA.colorCuaderno(x, S.tema) + '">' + esc(RA.antetitulo(x)) + '</a>';
-            }).join(' ') + '</p>' : '') + '</div></article>';
-        }).join('') || (refs.length ? '<p class="vacio">Nada coincide con este filtro.</p>' : '');
-      }
-      raiz.addEventListener('click', function (ev) {
-        var b = ev.target.closest('[data-tipo],[data-etq]'); if (!b) return;
-        if (b.hasAttribute('data-tipo')) {
-          f.tipo = b.getAttribute('data-tipo');
-          raiz.querySelectorAll('[data-tipo]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
-        } else {
-          var id = b.getAttribute('data-etq');
-          f.etq = f.etq === id ? '' : id;
-          raiz.querySelectorAll('[data-etq]').forEach(function (x) { x.setAttribute('aria-pressed', x.getAttribute('data-etq') === f.etq); });
-        }
-        pintarMuro();
-      });
-      var sel = raiz.querySelector('.rf-cuaderno select');
-      if (sel) sel.onchange = function () { f.cuaderno = this.value; history.replaceState(null, '', '#/referentes' + (f.cuaderno ? '/' + f.cuaderno : '')); pintarMuro(); };
-      pintarMuro();
+      S.limpiar = limpiar;
     }).catch(function (err) {
       console.error(err);
       pintarMensaje('No se pudo cargar', 'Revisa tu conexión e inténtalo de nuevo.', true);

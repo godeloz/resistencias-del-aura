@@ -287,6 +287,13 @@
       ]).then(function (r) { return { referentes: r[0], tipos: r[1], etiquetas: r[2], pares: r[3], citas: r[4] }; });
     },
     cambiarPublico: function (ids, publico) { return sb.from('referentes').update({ publico: publico }).in('id', ids).then(ok); },
+    cambiarDestacado: function (ids, v) { return sb.from('referentes').update({ destacado: v }).in('id', ids).then(ok); },
+    /* Números de ficha (SQL 10) de unos referentes; sin la columna devuelve [] */
+    numerosDe: function (ids) {
+      return sb.from('referentes').select('numero').in('id', ids).then(function (r) {
+        return r.error ? [] : (r.data || []).map(function (x) { return x.numero; }).filter(function (n) { return n != null; });
+      });
+    },
     eliminarReferente: function (id) { return sb.from('referentes').delete().eq('id', id).then(ok); },
 
     /* Todo lo necesario para exportar las entradas */

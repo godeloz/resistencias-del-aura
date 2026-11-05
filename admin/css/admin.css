@@ -348,6 +348,13 @@ body.admin { background: var(--a-fondo); color: var(--a-texto); font-family: var
 .rf-titulo a { text-decoration: none; }
 .rf-titulo a:hover { text-decoration: underline; }
 .rf-publico { display: flex; gap: 8px; align-items: center; font-size: 13px; min-width: 120px; }
+.rf-fila--con10 { grid-template-columns: 48px 64px minmax(0, 1fr) auto auto 34px; }
+.rf-nficha { font: 600 14px var(--f-ui); text-align: center; padding: 4px 0; border: 1.5px solid var(--a-linea); }
+.rf-destacar { display: inline-flex; gap: 6px; align-items: center; min-height: 32px; padding: 4px 10px; border: 1.5px solid var(--a-linea); background: transparent; color: var(--a-texto); font: 500 13px var(--f-ui); cursor: pointer; white-space: nowrap; }
+.rf-destacar span { font-size: 16px; line-height: 1; }
+.rf-destacar[aria-pressed="true"] { border-color: var(--a-texto); background: var(--a-texto); color: var(--a-fondo); }
+.rf-falta10 { flex-basis: 100%; margin: 4px 0 0; }
+@media (max-width: 760px) { .rf-fila--con10 { grid-template-columns: 40px 48px minmax(0, 1fr) 34px; } .rf-fila--con10 .rf-destacar, .rf-fila--con10 .rf-publico { grid-column: 3; } }
 .admin .interruptor { background: var(--a-linea); }
 .admin .interruptor[aria-checked="true"] { background: var(--c2); }
 .admin .interruptor::after { background: #fff; }

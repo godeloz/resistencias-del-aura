@@ -782,13 +782,21 @@
                 return f;
               });
               paso = log('Referentes…');
-              var nuevos = filas.filter(function (f) { return 'publico' in f; }), viejos = filas.filter(function (f) { return !('publico' in f); });
+              // Las nuevas entran por orden de creación en el Moodboard: así toman sus números de ficha (SQL 10) en ese orden
+              var nuevos = filas.filter(function (f) { return 'publico' in f; }).sort(function (a, b) { return a.creado_en < b.creado_en ? -1 : a.creado_en > b.creado_en ? 1 : (a.id < b.id ? -1 : 1); }),
+                viejos = filas.filter(function (f) { return !('publico' in f); });
               return RA.adm.guardarFilasReferentes(nuevos).then(function () { return RA.adm.guardarFilasReferentes(viejos); }).then(function () {
                 var pares = [];
                 refs.forEach(function (c) { (c.tagIds || []).forEach(function (t) { if (etiquetas[t]) pares.push({ referente_id: c.id, etiqueta_id: t }); }); });
                 return RA.adm.reemplazarEtiquetasDe(refs.map(function (c) { return c.id; }), pares);
               }).then(function () {
                 paso.textContent = '✓ ' + filas.length + (filas.length === 1 ? ' referente' : ' referentes') + ' (' + hechos.nuevos + (hechos.nuevos === 1 ? ' nuevo' : ' nuevos') + ', ' + (filas.length - hechos.nuevos) + ' actualizados)';
+                if (!nuevos.length) return;
+                return RA.adm.numerosDe(nuevos.map(function (f) { return f.id; })).then(function (ns) {
+                  if (!ns.length) return;
+                  var a = Math.min.apply(null, ns), z = Math.max.apply(null, ns);
+                  log(ns.length === 1 ? 'La nueva ficha quedó con el nº ' + a + ' del fichero' : 'Las ' + ns.length + ' fichas nuevas quedaron con los números ' + a + ' a ' + z + ' del fichero');
+                }).catch(function () { /* sin el SQL 10 no hay números */ });
               });
             });
           });
@@ -869,6 +877,9 @@
       '<div class="rf-filtros"></div><div class="rf-lista"><p class="a-cargando">Cargando…</p></div></div>';
     var estado = { q: '', tipo: '', ver: 'todos' };
     RA.adm.referentes().then(function (d) {
+      // Número de ficha y destacado (SQL 10). Sin el SQL, la lista funciona igual y lo pide.
+      var con10 = d.referentes.some(function (r) { return 'numero' in r; });
+      if (con10) d.referentes.sort(function (a, b) { return (b.numero || 0) - (a.numero || 0); });
       var tipos = {}; d.tipos.forEach(function (t) { tipos[t.id] = t; });
       var etq = {}; d.etiquetas.forEach(function (t) { etq[t.id] = t; });
       var porRef = {}; d.pares.forEach(function (p) { (porRef[p.referente_id] = porRef[p.referente_id] || []).push(etq[p.etiqueta_id]); });
@@ -878,11 +889,14 @@
         P.querySelector('.rf-lista').innerHTML = '<p class="a-vacio">Todavía no hay referentes. <a href="#/importar">Impórtalos desde el Moodboard</a>.</p>';
         return;
       }
-      filtros.innerHTML = '<input type="search" placeholder="Buscar…" aria-label="Buscar referentes">' +
+      filtros.innerHTML = '<input type="search" placeholder="' + (con10 ? 'Buscar… o #número' : 'Buscar…') + '" aria-label="Buscar referentes">' +
         '<select aria-label="Tipo"><option value="">Todos los tipos</option>' + d.tipos.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.nombre) + '</option>'; }).join('') + '</select>' +
-        '<select aria-label="Visibilidad" data-ver><option value="todos">Públicos y privados</option><option value="publicos">Solo públicos</option><option value="privados">Solo privados</option></select>' +
+        '<select aria-label="Visibilidad" data-ver><option value="todos">Públicos y privados</option><option value="publicos">Solo públicos</option><option value="privados">Solo privados</option>' +
+          (con10 ? '<option value="destacados">Solo destacados</option>' : '') + '</select>' +
         '<span class="rf-cuenta"></span>' +
-        '<button type="button" class="a-boton a-boton--fino" data-todos="1">Hacer públicos los visibles</button><button type="button" class="a-boton a-boton--fino" data-todos="0">Hacer privados los visibles</button>';
+        '<button type="button" class="a-boton a-boton--fino" data-todos="1">Hacer públicos los visibles</button><button type="button" class="a-boton a-boton--fino" data-todos="0">Hacer privados los visibles</button>' +
+        (con10 ? '<button type="button" class="a-boton a-boton--fino" data-dest-todos="1">Destacar los visibles</button><button type="button" class="a-boton a-boton--fino" data-dest-todos="0">Quitar el destacado a los visibles</button>'
+          : '<p class="ed-nota ap-falta rf-falta10">Para numerar las fichas y destacar referentes, corre en Supabase el archivo <code>supabase/10-fichero.sql</code> (SQL Editor → pegar → Run) y recarga esta página.</p>');
       var t = null;
       filtros.querySelector('input').oninput = function () { var v = this.value; clearTimeout(t); t = setTimeout(function () { estado.q = v.toLowerCase(); pintar(); }, 150); };
       filtros.querySelector('select').onchange = function () { estado.tipo = this.value; pintar(); };
@@ -898,39 +912,59 @@
           });
         };
       });
+      filtros.querySelectorAll('[data-dest-todos]').forEach(function (b) {
+        b.onclick = function () {
+          var v = b.getAttribute('data-dest-todos') === '1', ids = visibles().map(function (r) { return r.id; });
+          if (!ids.length) return;
+          ui().confirmar(v ? 'Destacar' : 'Quitar el destacado', ids.length + (ids.length === 1 ? ' referente ' : ' referentes ') + (v ? 'quedarán destacados: en el sitio se ven más grandes.' : 'dejarán de estar destacados.'), 'Aceptar').then(function (si) {
+            if (!si) return;
+            RA.adm.cambiarDestacado(ids, v).then(function () { d.referentes.forEach(function (r) { if (ids.indexOf(r.id) >= 0) r.destacado = v; }); pintar(); ui().aviso('Listo'); })
+              .catch(function (e) { ui().aviso('No se pudo: ' + e.message, 'error'); });
+          });
+        };
+      });
       function visibles() {
         return d.referentes.filter(function (r) {
           if (estado.tipo && r.tipo_id !== estado.tipo) return false;
+          if (estado.ver === 'destacados' && !r.destacado) return false;
           if (estado.ver === 'publicos' && !r.publico) return false;
           if (estado.ver === 'privados' && r.publico) return false;
+          if (estado.q && /^#\d+$/.test(estado.q.trim())) return String(r.numero) === estado.q.trim().slice(1);   // «#37»: la ficha nº 37
           if (estado.q && (r.titulo + ' ' + r.autor + ' ' + r.fuente + ' ' + (porRef[r.id] || []).map(function (e) { return e ? e.nombre : ''; }).join(' ')).toLowerCase().indexOf(estado.q) < 0) return false;
           return true;
         });
       }
       function pintar() {
         var l = visibles(), pub = d.referentes.filter(function (r) { return r.publico; }).length;
-        filtros.querySelector('.rf-cuenta').textContent = l.length + ' de ' + d.referentes.length + ' · ' + pub + ' públicos';
+        var dest = d.referentes.filter(function (r) { return r.destacado; }).length;
+        filtros.querySelector('.rf-cuenta').textContent = l.length + ' de ' + d.referentes.length + ' · ' + pub + ' públicos' + (con10 ? ' · ' + dest + (dest === 1 ? ' destacado' : ' destacados') : '');
         P.querySelector('.rf-lista').innerHTML = l.map(function (r) {
           var tp = tipos[r.tipo_id] || {}, img = RA.urlImagen(r.imagen);
-          return '<div class="rf-fila' + (r.publico ? '' : ' rf-fila--privado') + '">' +
+          return '<div class="rf-fila' + (r.publico ? '' : ' rf-fila--privado') + (con10 ? ' rf-fila--con10' : '') + '">' +
+            (con10 ? '<span class="rf-nficha" title="Número de ficha">' + (r.numero != null ? r.numero : '–') + '</span>' : '') +
             '<span class="rf-img"' + (img ? ' style="background-image:url(\'' + esc(img) + '\')"' : '') + '></span>' +
             '<span class="a-fila__textos"><span class="antetitulo"><i class="ed-ref__color" style="background:' + esc(tp.color || '#ccc') + '"></i> ' + esc(tp.nombre || '') +
               (citas[r.id] ? ' · citado en ' + citas[r.id] : '') + '</span>' +
             '<span class="rf-titulo">' + (r.url ? '<a href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.titulo || 'Sin título') + '</a>' : esc(r.titulo || 'Sin título')) + '</span>' +
             '<span class="a-fila__dato">' + esc([r.autor, r.fuente, r.anio].filter(Boolean).join(' · ')) + '</span></span>' +
+            (con10 ? '<button type="button" class="rf-destacar" aria-pressed="' + !!r.destacado + '" data-dest="' + esc(r.id) + '" title="' + (r.destacado ? 'Quitar el destacado' : 'Destacar: en el sitio se ve más grande') + '">' +
+              '<span aria-hidden="true">' + (r.destacado ? '★' : '☆') + '</span> ' + (r.destacado ? 'Destacado' : 'Destacar') + '</button>' : '') +
             '<label class="rf-publico"><button type="button" class="interruptor" role="switch" aria-checked="' + !!r.publico + '" data-pub="' + esc(r.id) + '" aria-label="Público"></button>' + (r.publico ? 'Público' : 'Privado') + '</label>' +
             '<button type="button" class="a-mini" data-borrar="' + esc(r.id) + '" aria-label="Quitar del sitio">×</button></div>';
         }).join('') || '<p class="a-vacio">Nada coincide con la búsqueda.</p>';
       }
       P.querySelector('.rf-lista').addEventListener('click', function (ev) {
         var b = ev.target.closest('button'); if (!b) return;
-        var id = b.getAttribute('data-pub') || b.getAttribute('data-borrar');
+        var id = b.getAttribute('data-pub') || b.getAttribute('data-borrar') || b.getAttribute('data-dest');
         var r = d.referentes.filter(function (x) { return x.id === id; })[0]; if (!r) return;
-        if (b.hasAttribute('data-pub')) {
+        if (b.hasAttribute('data-dest')) {
+          var dv = !r.destacado;
+          RA.adm.cambiarDestacado([id], dv).then(function () { r.destacado = dv; pintar(); }).catch(function (e) { ui().aviso('No se pudo: ' + e.message, 'error'); });
+        } else if (b.hasAttribute('data-pub')) {
           var v = !r.publico;
           RA.adm.cambiarPublico([id], v).then(function () { r.publico = v; pintar(); }).catch(function (e) { ui().aviso('No se pudo: ' + e.message, 'error'); });
         } else {
-          ui().confirmar('Quitar referente', '«' + esc(r.titulo) + '» se quitará del sitio (no del Moodboard). Si lo vuelves a importar, regresará.', 'Quitar', true).then(function (si) {
+          ui().confirmar('Quitar referente', '«' + esc(r.titulo) + '» se quitará del sitio (no del Moodboard). Si lo vuelves a importar, regresará' + (con10 && r.numero != null ? ' con un número nuevo (su nº ' + r.numero + ' no se vuelve a usar).' : '.'), 'Quitar', true).then(function (si) {
             if (!si) return;
             RA.adm.eliminarReferente(id).then(function () { d.referentes = d.referentes.filter(function (x) { return x.id !== id; }); pintar(); })
               .catch(function (e) { ui().aviso('No se pudo: ' + e.message, 'error'); });

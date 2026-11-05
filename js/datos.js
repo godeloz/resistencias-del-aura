@@ -6,6 +6,7 @@
   'use strict';
   var RA = window.RA;
   var C = window.RA_CONFIG || {};
+  var CAMPOS_REF = 'id,tipo_id,titulo,cuerpo,url,autor,fuente,anio,imagen,imagen_w,imagen_h,creado_en';
   var CAMPOS_LISTA = 'id,tipo,numero,slug,titulo,entradilla,palabras,minutos,portada_imagen,portada_color,portada_patron,modo_lectura,orden,publicado_en';
 
   var modo = window.RA_DEMO ? 'demo' : (C.configurado && window.supabase ? 'supabase' : 'sin-config');
@@ -139,7 +140,10 @@
       }
       if (modo !== 'supabase') return Promise.reject(new Error('sin-config'));
       return Promise.all([
-        sb.from('referentes').select('id,tipo_id,titulo,cuerpo,url,autor,fuente,anio,imagen,imagen_w,imagen_h,creado_en').eq('publico', true).order('creado_en', { ascending: false }).limit(5000),
+        // Número de ficha y destacado (SQL 10). Sin esas columnas, se sigue sin ellas (orden por fecha, sin números).
+        sb.from('referentes').select(CAMPOS_REF + ',numero,destacado').eq('publico', true).order('creado_en', { ascending: false }).limit(5000).then(function (x) {
+          return x.error ? sb.from('referentes').select(CAMPOS_REF).eq('publico', true).order('creado_en', { ascending: false }).limit(5000) : x;
+        }),
         sb.from('tipos').select('*').order('orden'),
         sb.from('etiquetas').select('*'),
         sb.from('referentes_etiquetas').select('*').limit(20000),
