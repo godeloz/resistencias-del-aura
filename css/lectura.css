@@ -946,15 +946,15 @@ sup.np { line-height: 0; vertical-align: baseline; font-size: inherit; position:
 .np-marca {
   display: inline-flex; align-items: center; justify-content: center; vertical-align: .42em; margin: 0 .04em 0 .06em;
   width: .92em; height: .92em; min-width: 17px; min-height: 17px; padding: 0; border: 0; border-radius: 50%;
-  background: transparent; color: var(--tc, var(--tA)); cursor: pointer; line-height: 0; position: relative;
+  background: transparent; color: var(--np, var(--tc, var(--tA))); cursor: pointer; line-height: 0; position: relative;
   transition: background .2s, color .2s; text-indent: 0; hyphens: none;
 }
 .np-marca::after { content: ''; position: absolute; inset: -12px; }   /* área táctil */
 .np-marca svg { width: .64em; height: .64em; min-width: 12px; min-height: 12px; display: block; }
-.np-marca--vuelta { color: var(--tc2, var(--tB)); }
+.np-marca--vuelta { color: var(--np2, var(--tc2, var(--tB))); }
 .np-marca--num { width: auto; min-width: 1.1em; padding: 0 .18em; border-radius: 9px; }
 .np-num { font-family: var(--f-ui); font-weight: 600; font-size: .62em; line-height: 1; }
-.np-marca.abierta { background: var(--tc, var(--tA)); color: var(--tc-sobre, #fff); }
+.np-marca.abierta { background: var(--np, var(--tc, var(--tA))); color: var(--np-sobre, var(--tc-sobre, #fff)); }
 .np-marca:focus-visible { outline-offset: 2px; }
 
 /* Lista plegada al final */
@@ -969,8 +969,8 @@ sup.np { line-height: 0; vertical-align: baseline; font-size: inherit; position:
 .notas-final[open] summary::after { content: '–'; }
 .notas-final ol { list-style: none; margin: 4px 0 0; padding: 0; font-family: var(--f-texto); font-size: 15px; line-height: 1.5; }
 .notas-final li { display: flex; gap: 10px; margin: 0 0 12px; }
-.notas-final__marca { flex: none; padding-top: 4px; color: var(--tc, var(--tA)); }
-.notas-final__marca.np-marca--vuelta { color: var(--tc2, var(--tB)); }
+.notas-final__marca { flex: none; padding-top: 4px; color: var(--np, var(--tc, var(--tA))); }
+.notas-final__marca.np-marca--vuelta { color: var(--np2, var(--tc2, var(--tB))); }
 .notas-final__marca svg { display: block; }
 .notas-final__marca .np-num { font-size: 12px; }
 .notas-final__texto p { margin: 0 0 .5em; }
@@ -978,15 +978,19 @@ sup.np { line-height: 0; vertical-align: baseline; font-size: inherit; position:
 
 /* La hoja que sube desde abajo (notas y referentes de las citas) */
 .hoja-nota {
-  position: fixed; z-index: 46; left: 50%; bottom: 0; width: min(var(--columna), 100%); max-height: 60vh; max-height: 60dvh;
+  position: fixed; z-index: 46; left: 50%; bottom: 0; width: min(var(--columna), 100%);
+  max-height: calc(var(--hoja-alto-max, 60) * 1vh); max-height: calc(var(--hoja-alto-max, 60) * 1dvh);
   display: flex; flex-direction: column; transform: translate(-50%, 105%); visibility: hidden;
   transition: transform .32s var(--curva), visibility 0s linear .32s;
-  background-color: var(--hoja-fondo); color: var(--hoja-texto); border-top: 4px solid var(--tc, var(--tA));
+  background-color: var(--hoja-fondo); color: var(--hoja-texto);
+  border-top: var(--hoja-filete-ancho, 4px) solid var(--hoja-filete, var(--tc, var(--tA)));
   border-radius: 16px 16px 0 0; box-shadow: 0 -10px 30px -12px rgba(0,0,0,.35);
-  background-image: radial-gradient(var(--hoja-pc) 1px, transparent 1.3px), radial-gradient(var(--hoja-pc) 1px, transparent 1.3px);
-  background-size: 5px 5px, 7px 7px; background-position: 0 0, 2px 3px;
-  font-family: var(--f-texto); outline: none;
+  --pc: var(--hoja-pc);   /* el patrón (clase p-…) lo pone notas.js según Apariencia */
+  font-family: var(--hoja-letra, var(--f-texto)); outline: none;
 }
+.hoja-nota--rectas { border-radius: 0; }
+.hoja-nota--sombra-ninguna { box-shadow: none; }
+.hoja-nota--sombra-desplazada { box-shadow: -7px -7px 0 var(--sombra); }
 .hoja-nota.abierta { transform: translate(-50%, 0); visibility: visible; transition: transform .32s var(--curva), visibility 0s; }
 .hoja-nota.arrastrando { transition: none; }
 .hoja-nota__asa { flex: none; width: 40px; height: 4px; border-radius: 2px; margin: 8px auto 2px; background: currentColor; opacity: .3; touch-action: none; cursor: grab; }
@@ -994,8 +998,8 @@ sup.np { line-height: 0; vertical-align: baseline; font-size: inherit; position:
   flex: none; display: flex; align-items: center; gap: 10px; padding: 2px 10px 6px 20px; touch-action: none;
   font-family: var(--f-ui); font-weight: 600; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
 }
-.hoja-nota__marca { display: flex; color: var(--tc, var(--tA)); }
-.hoja-nota__marca .np-marca--vuelta { color: var(--tc2, var(--tB)); }
+.hoja-nota__marca { display: flex; color: var(--hoja-marca, var(--tc, var(--tA))); }
+.hoja-nota__marca .np-marca--vuelta { color: var(--hoja-marca, var(--tc2, var(--tB))); }
 .hoja-nota__marca svg { display: block; }
 .hoja-nota__marca .np-num { font-size: 15px; }
 .hoja-nota__titulo { flex: 1; min-width: 0; }
@@ -1008,11 +1012,11 @@ sup.np { line-height: 0; vertical-align: baseline; font-size: inherit; position:
 .hoja-nota__cab button:disabled { opacity: .25; cursor: default; }
 .hoja-nota__cuerpo {
   flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
-  padding: 2px 24px 26px; padding-bottom: max(26px, env(safe-area-inset-bottom)); font-size: 17px; line-height: 1.55;
+  padding: 2px 24px 26px; padding-bottom: max(26px, env(safe-area-inset-bottom)); font-size: var(--hoja-tam, 17px); line-height: 1.55;
 }
 .hoja-nota__cuerpo p { margin: 0 0 .75em; }
 .hoja-nota__cuerpo p:last-child { margin-bottom: 0; }
-.hoja-nota__cuerpo a { color: inherit; text-decoration-color: var(--tc, var(--tA)); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.hoja-nota__cuerpo a { color: inherit; text-decoration-color: var(--hoja-marca, var(--tc, var(--tA))); text-decoration-thickness: 2px; text-underline-offset: 3px; }
 body.con-hoja .pag-entrada { padding-bottom: var(--hoja-alto, 0); }
 .modo-paginas .libro { transition: transform .3s var(--curva); }
 .hoja-ref__tipo { display: block; width: 14px; height: 14px; border-radius: 3px; }
@@ -1020,7 +1024,7 @@ body.con-hoja .pag-entrada { padding-bottom: var(--hoja-alto, 0); }
 .hoja-ref h3 { margin: 0 0 6px; font-family: var(--f-titulos); font-weight: var(--w2-titulos); font-size: 22px; line-height: 1.12; }
 .hoja-ref__meta { font-family: var(--f-ui); font-size: 13px; opacity: .8; }
 .hoja-ref__ver { font-family: var(--f-ui); font-weight: 600; font-size: 14px; }
-@media (max-width: 720px) { .hoja-nota__cuerpo { font-size: 16px; padding: 2px 20px 24px; } }
+@media (max-width: 720px) { .hoja-nota__cuerpo { font-size: calc(var(--hoja-tam, 17px) - 1px); padding: 2px 20px 24px; } }
 @media (prefers-reduced-motion: reduce) { .hoja-nota, .hoja-nota.abierta, .modo-paginas .libro { transition: none; } }
 
 /* ── Íconos de la cabecera: Cuadernos y Referentes (A-12) ───────────── */
@@ -1226,4 +1230,10 @@ html.au-escuchando, html.au-escuchando body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .au-cita.activo .au-onda i { animation: none; transform: scaleY(.8); }
   .cuerpo .au-bloque, .au-barra, .au-play { transition: none; }
+}
+
+/* Muestra de la hoja en Administración → Apariencia (la misma hoja, quieta) */
+.hoja-nota.hoja-nota--muestra {
+  position: relative; left: auto; bottom: auto; transform: none; visibility: visible; transition: none;
+  width: 100%; max-height: none; z-index: auto;
 }

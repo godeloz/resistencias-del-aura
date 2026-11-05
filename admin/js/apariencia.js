@@ -45,6 +45,7 @@
     function copiaAp(x) { var c = Object.assign({}, x); c.extra = JSON.parse(JSON.stringify(x.extra || {})); return c; }
     var ap = copiaAp(guardada), pr = textosDe(proyectoG);
     var sellos = undefined;   // undefined = cargando · null = falta el SQL 06 · [] = lista
+    var vistaHoja = 'claro';  // muestra de la hoja de notas: claro o noche (no se guarda)
     var vista = { tam: 'movil', pagina: 'inicio' };
     var primera = (A().entradas || []).filter(function (e) { return e.estado === 'publicado'; })[0];
 
@@ -106,13 +107,13 @@
         var c = pal.cuadernos[i % pal.cuadernos.length], cl = RA.esClaro(c);
         return '<button type="button" class="ap-patron" data-campo="patron_defecto" data-valor="' + k + '"' + anillo(ap.patron_defecto === k) + ' title="' + NOMBRES.patrones[k] + '" aria-label="' + NOMBRES.patrones[k] + '" style="background:' + c + ';--pc:' + (cl ? 'rgba(20,20,40,.18)' : 'rgba(255,255,255,.3)') + '"><span class="pat p-' + k + '"></span><span class="ap-patron__n">' + NOMBRES.patrones[k] + '</span></button>';
       }).join('') + '</div></section>';
-      // Notas al pie y apuntes (A-03, A-06): se guardan en «extra»
-      var ex = ap.extra || {}, colN = /^#[0-9a-f]{6}$/i.test(ex.color_nota || '') ? ex.color_nota : pal.papelSuave;
+      // Notas al pie (A-20): la hoja que sube desde abajo. Se guarda en extra.hoja_nota
+      var ex = ap.extra || {};
       var temaAp = { a: { extra: ex }, pal: pal };
-      h += '<section class="ap-sec"><h2 class="ap-lbl">Notas al pie y apuntes</h2>' +
-        '<div class="ap-color"><input type="color" data-extra="color_nota" value="' + colN.toLowerCase() + '" aria-label="Color de la hoja de notas"><span>Color de la hoja donde se leen las notas al pie' + (ex.color_nota ? '' : ' <small>(el papel suave de la paleta)</small>') + '</span>' +
-          (ex.color_nota ? '<button type="button" data-extra-quitar="color_nota">Usar el de la paleta</button>' : '') + '</div>' +
-        '<h3 class="ap-lbl ap-sub">Colores de las fichas de apunte <small>(cada apunte elige uno en el editor)</small></h3><div class="ap-colores">' +
+      h += htmlHojaNota(pal);
+      // Fichas de apunte (A-06): se guardan en extra.colores_apunte
+      h += '<section class="ap-sec"><h2 class="ap-lbl">Fichas de apunte</h2>' +
+        '<h3 class="ap-lbl ap-sub">Colores de las fichas <small>(cada apunte elige uno en el editor)</small></h3><div class="ap-colores">' +
         RA.coloresApunte(temaAp).map(function (c) {
           var cambiado = ((ex.colores_apunte || {})[c.clave]);
           return '<div class="ap-color"><input type="color" data-color-apunte="' + c.clave + '" value="' + c.hex.toLowerCase() + '" aria-label="' + esc(c.nombre) + '"><span>' + esc(c.nombre) + '</span>' +
@@ -154,6 +155,100 @@
       vistazo();
       estado();
     }
+    /* ── Editor de la hoja de notas al pie (A-20) ─────────────────────
+       Muestra en vivo arriba y, debajo, cada elemento que se puede cambiar. */
+    var NOMBRES_HN = {
+      patron: { ninguno: 'Sin patrón', grano: 'Grano', puntos: 'Puntos', trama: 'Trama', rayado: 'Rayado', cuadricula: 'Cuadrícula', milimetrado: 'Milimetrado', diagonal: 'Diagonal', tejido: 'Tejido', anillos: 'Anillos', ondas: 'Ondas', lomos: 'Lomos', damero: 'Damero' }
+    };
+    function hojaCfg(pal) { return RA.configHoja(ap.extra, pal); }
+    function hnOps(k, actual, ops) {
+      return '<div class="ap-fila">' + ops.map(function (o) {
+        return '<button type="button" class="ap-op" data-hn="' + k + '" data-valor="' + o[0] + '"' + anillo(String(actual) === String(o[0])) + '><b>' + o[1] + '</b>' + (o[2] ? '<small>' + o[2] + '</small>' : '') + '</button>';
+      }).join('') + '</div>';
+    }
+    function hnColor(k, valor, etiqueta) {
+      return '<label class="ap-color ap-hn-propio"><input type="color" data-hn-color="' + k + '" value="' + String(valor).toLowerCase() + '" aria-label="' + esc(etiqueta) + '"><span>' + etiqueta + '</span></label>';
+    }
+    function tintasMuestra(pal, oscuro) {
+      var tc = RA.tintaLegible(pal.cuadernos[2], pal.tinta), tc2 = RA.tintaLegible(pal.tituloB, pal.tinta);
+      if (oscuro) { if (RA.lum(tc) < 0.14) tc = RA.mezclar(tc, '#FFFFFF', 0.4); if (RA.lum(tc2) < 0.14) tc2 = RA.mezclar(tc2, '#FFFFFF', 0.4); }
+      return { tc: tc, tc2: tc2, sobre: RA.lum(tc) < 0.3 ? '#FFFFFF' : pal.tinta };
+    }
+    function htmlMuestraHoja(pal) {
+      var cfg = hojaCfg(pal), osc = vistaHoja === 'noche', tintas = tintasMuestra(pal, osc);
+      var est = RA.estiloHojaDe(cfg, pal, osc, tintas), mf = RA.marcasNotaDe(cfg, pal) || {};
+      var vars = Object.keys(est.vars).map(function (k) { return k + ':' + est.vars[k]; }).join(';');
+      var pagina = '--tc:' + tintas.tc + ';--tc2:' + tintas.tc2 + ';--tc-sobre:' + tintas.sobre + ';--sombra:' + (osc ? pal.tituloB : pal.sombra) + ';' +
+        Object.keys(mf).map(function (k) { return k + ':' + mf[k]; }).join(';') +
+        ';background:' + (osc ? T.fondosSitio.noche : pal.papel) + ';color:' + (osc ? '#F3F0E8' : pal.tinta);
+      var boton = function (t, l, off) { return '<button type="button" tabindex="-1"' + (off ? ' disabled' : '') + ' aria-label="' + l + '">' + t + '</button>'; };
+      return '<div class="ap-hoja-muestra" style="' + pagina + '" aria-hidden="true">' +
+        '<p class="ap-hoja-muestra__texto">…la copia técnica disuelve el aquí y el ahora de la obra<span class="np-marca">' + RA.simboloNota(0, 13) + '</span>, pero no todo lo que se reproduce pierde su temblor. En los cuadernos de la ciudad<span class="np-marca abierta">' + RA.simboloNota(1, 13) + '</span> sobreviven gestos que ninguna máquina alcanza a fijar.</p>' +
+        '<section class="hoja-nota hoja-nota--muestra abierta ' + est.clases.join(' ') + '" style="' + vars + '">' +
+          '<div class="hoja-nota__asa"></div><header class="hoja-nota__cab"><span class="hoja-nota__marca">' + RA.simboloNota(1, 18) + '</span>' +
+          '<span class="hoja-nota__titulo">Nota 2 de 5</span><span class="hoja-nota__nav">' + boton('‹', 'Anterior') + boton('›', 'Siguiente') + '</span>' + boton('×', 'Cerrar') + '</header>' +
+          '<div class="hoja-nota__cuerpo"><p>Los cuadernos son los del taller de la Comuna 13, revisados entre marzo y junio. Cito de <em>Cuaderno de clase</em>, sin paginar.</p>' +
+          '<p>Varias páginas tienen dibujos encima del texto; los transcribí sin ellos. Ver también el <a href="#" tabindex="-1">archivo de la Biblioteca Pública Piloto</a>.</p></div>' +
+        '</section></div>';
+    }
+    function htmlHojaNota(pal) {
+      var cfg = hojaCfg(pal), h = ap.extra.hoja_nota || {};
+      var pc = RA.esClaro(cfg.fondo) ? 'rgba(20,20,40,' + RA.HOJA.intensidad[cfg.intensidad][0] * 2.2 + ')' : 'rgba(255,255,255,' + RA.HOJA.intensidad[cfg.intensidad][1] * 2.2 + ')';
+      var grupos = [['De la paleta', [[pal.papelSuave, 'Papel suave (el original)'], [pal.papel, 'Papel'], [pal.apunte, 'Apunte']].concat(pal.cuadernos.map(function (c, i) { return [c, 'Tinta ' + (i + 1)]; })).concat([[pal.tinta, 'Tinta']])]].concat(RA.HOJA.colores);
+      var conocido = false;
+      var colores = grupos.map(function (g) {
+        return '<div class="ap-hn-grupo"><span class="ap-hn-grupo__t">' + g[0] + '</span><div class="ap-hn-colores">' + g[1].map(function (c, i) {
+          var orig = g[0] === 'De la paleta' && i === 0, sel = orig ? !cfg.fondoPropio : (cfg.fondoPropio && cfg.fondo === c[0].toUpperCase());
+          if (sel) conocido = true;
+          return '<button type="button" class="ap-hn-color" data-hn="fondo" data-valor="' + (orig ? '' : c[0]) + '"' + anillo(sel) + ' style="background:' + c[0] + '" title="' + esc(c[1]) + '" aria-label="' + esc(c[1]) + '"></button>';
+        }).join('') + '</div></div>';
+      }).join('');
+      return '<section class="ap-sec ap-hn"><h2 class="ap-lbl">Notas al pie <small>(la hoja que sube desde abajo)</small></h2>' +
+        '<div class="ap-hn-vista"><div class="ap-hn-vista__barra"><span class="ap-lbl">Muestra</span><span class="ed-seg ap-seg" role="group" aria-label="Muestra en">' +
+          '<button type="button" data-hn-vista="claro" aria-pressed="' + (vistaHoja === 'claro') + '">Claro</button><button type="button" data-hn-vista="noche" aria-pressed="' + (vistaHoja === 'noche') + '">Noche</button></span></div>' +
+          '<div class="ap-hn-muestra">' + htmlMuestraHoja(pal) + '</div></div>' +
+        '<h3 class="ap-lbl ap-sub">Color de fondo</h3>' + colores +
+        '<div class="ap-fila ap-hn-otro">' + hnColor('fondo', cfg.fondo, 'Otro color') + '<span class="ed-nota">' + (cfg.fondoPropio ? (conocido ? '' : 'Color propio: ') + esc(cfg.fondo) : 'Ahora: el papel suave de la paleta') + '</span></div>' +
+        '<h3 class="ap-lbl ap-sub">Patrón</h3><div class="ap-patrones">' + RA.HOJA.patrones.map(function (k) {
+          return '<button type="button" class="ap-patron" data-hn="patron" data-valor="' + k + '"' + anillo(cfg.patron === k) + ' title="' + NOMBRES_HN.patron[k] + '" aria-label="' + NOMBRES_HN.patron[k] + '" style="background:' + cfg.fondo + ';--pc:' + pc + '">' +
+            (k === 'ninguno' ? '' : '<span class="pat p-' + k + '"></span>') + '<span class="ap-patron__n">' + NOMBRES_HN.patron[k] + '</span></button>';
+        }).join('') + '</div>' +
+        (cfg.patron === 'ninguno' ? '' : '<h3 class="ap-lbl ap-sub">Intensidad del patrón</h3>' +
+          hnOps('intensidad', cfg.intensidad, [['sutil', 'Sutil', 'la regla del sitio'], ['media', 'Media'], ['marcada', 'Marcada']])) +
+        '<h3 class="ap-lbl ap-sub">Color del texto</h3>' +
+        '<div class="ap-fila">' + '<button type="button" class="ap-op" data-hn="texto" data-valor=""' + anillo(cfg.texto === 'auto') + '><b>Automático</b><small>oscuro o claro según el fondo</small></button>' +
+          hnColor('texto', cfg.texto === 'auto' ? (RA.esClaro(cfg.fondo) ? pal.tinta : '#F3F0E8') : cfg.texto, 'Elegir un color') + '</div>' +
+        '<h3 class="ap-lbl ap-sub">Filete de arriba</h3>' +
+        '<div class="ap-fila">' + [['cuaderno', 'Del cuaderno', 'cambia con cada capítulo'], ['ninguno', 'Sin filete']].map(function (o) {
+          return '<button type="button" class="ap-op" data-hn="filete" data-valor="' + o[0] + '"' + anillo(cfg.filete === o[0]) + '><b>' + o[1] + '</b>' + (o[2] ? '<small>' + o[2] + '</small>' : '') + '</button>';
+        }).join('') + hnColor('filete_color', cfg.filete_color, cfg.filete === 'fijo' ? 'Un color fijo (elegido)' : 'Un color fijo') + '</div>' +
+        (cfg.filete === 'ninguno' ? '' : '<h3 class="ap-lbl ap-sub">Grosor del filete</h3>' + hnOps('grosor', cfg.grosor, [['fino', 'Fino'], ['medio', 'Medio', 'el original'], ['grueso', 'Grueso']])) +
+        '<h3 class="ap-lbl ap-sub">Color de las marcas <small>(los símbolos en el texto, en la hoja y en la lista final)</small></h3>' +
+        '<div class="ap-fila"><button type="button" class="ap-op" data-hn="marcas" data-valor="cuaderno"' + anillo(cfg.marcas === 'cuaderno') + '><b>Del cuaderno</b><small>el original</small></button>' +
+          hnColor('marcas_color', cfg.marcas_color, cfg.marcas === 'fijo' ? 'Un color fijo (elegido)' : 'Un color fijo') + '</div>' +
+        '<div class="ap-dos"><div><h3 class="ap-lbl ap-sub">Esquinas</h3>' + hnOps('esquinas', cfg.esquinas, [['redondas', 'Redondeadas'], ['rectas', 'Rectas']]) + '</div>' +
+          '<div><h3 class="ap-lbl ap-sub">Sombra</h3>' + hnOps('sombra', cfg.sombra, [['suave', 'Suave'], ['ninguna', 'Ninguna'], ['desplazada', 'Desplazada', 'como las citas destacadas']]) + '</div></div>' +
+        '<div class="ap-dos"><div><h3 class="ap-lbl ap-sub">Letra</h3>' + hnOps('letra', cfg.letra, [['lectura', 'La de lectura'], ['titulos', 'La de títulos'], ['interfaz', 'Jost']]) + '</div>' +
+          '<div><h3 class="ap-lbl ap-sub">Tamaño de la letra</h3>' + hnOps('tam', cfg.tam, [['pequena', 'Pequeña'], ['normal', 'Normal'], ['grande', 'Grande']]) + '</div></div>' +
+        '<h3 class="ap-lbl ap-sub">Alto máximo de la hoja <small>(si la nota es más larga, se desplaza dentro)</small></h3>' +
+        hnOps('alto', cfg.alto, [[40, '40 %'], [50, '50 %'], [60, '60 %', 'el original'], [70, '70 %']]) +
+        '<h3 class="ap-lbl ap-sub">En el modo noche</h3>' +
+        hnOps('noche', cfg.noche, [['oscurecer', 'Oscurecer la hoja', 'para que no encandile'], ['igual', 'Mantener el color']]) +
+        '<p><button type="button" class="a-boton a-boton--fino" data-hn-original' + (Object.keys(h).length || ap.extra.color_nota ? '' : ' disabled') + '>Volver al diseño original</button></p>' +
+        '<span class="ed-nota">Vale para todas las notas del sitio y para las fichas de los referentes que se abren desde las citas.</span></section>';
+    }
+    function pintarMuestraHoja() {
+      var m = secc.querySelector('.ap-hn-muestra'); if (m) m.innerHTML = htmlMuestraHoja(T.paletas[ap.paleta]);
+    }
+    function cambiarHoja(k, v) {
+      var h = Object.assign({}, ap.extra.hoja_nota || {});
+      if (v === '' || v == null) delete h[k]; else h[k] = v;
+      if (k === 'filete_color') h.filete = 'fijo';
+      if (k === 'marcas_color') h.marcas = 'fijo';
+      if (k === 'fondo') delete ap.extra.color_nota;   // el formato anterior (solo el color)
+      if (Object.keys(h).length) ap.extra.hoja_nota = h; else delete ap.extra.hoja_nota;
+    }
+
     /* Marcas de la convocatoria (Estímulos PP Cultura): logo de PP y pie de créditos. Se guardan en extra.convocatoria */
     function htmlConvocatoria(pal) {
       var CV = RA.convocatoria; if (!CV) return '';
@@ -367,6 +462,24 @@
     }
 
     marco.addEventListener('load', function () { enviar(); setTimeout(enviar, 400); });
+    // Hoja de notas (A-20)
+    secc.addEventListener('click', function (ev) {
+      var v = ev.target.closest('[data-hn-vista]');
+      if (v) { vistaHoja = v.getAttribute('data-hn-vista'); secc.querySelectorAll('[data-hn-vista]').forEach(function (x) { x.setAttribute('aria-pressed', x === v); }); pintarMuestraHoja(); return; }
+      if (ev.target.closest('[data-hn-original]')) { delete ap.extra.hoja_nota; delete ap.extra.color_nota; pintar(); enviar(); return; }
+      var b = ev.target.closest('[data-hn]'); if (!b) return;
+      var k = b.getAttribute('data-hn'), val = b.getAttribute('data-valor');
+      cambiarHoja(k, k === 'alto' ? Number(val) : val);
+      if (k === 'filete' && val === 'cuaderno') { var h = ap.extra.hoja_nota || {}; delete h.filete_color; }
+      if (k === 'marcas' && val === 'cuaderno') { var h2 = ap.extra.hoja_nota || {}; delete h2.marcas_color; }
+      pintar(); enviar();
+    });
+    secc.addEventListener('input', function (ev) {
+      var t = ev.target, k = t.getAttribute('data-hn-color'); if (!k) return;
+      cambiarHoja(k, t.value.toUpperCase());
+      pintarMuestraHoja(); estado(); clearTimeout(secc._th); secc._th = setTimeout(enviar, 150);
+    });
+    secc.addEventListener('change', function (ev) { if (ev.target.hasAttribute('data-hn-color')) pintar(); });
     secc.addEventListener('click', function (ev) {
       var b = ev.target.closest('[data-conv]'); if (!b) return;
       var k = b.getAttribute('data-conv'), v = b.getAttribute('data-valor');

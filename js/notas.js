@@ -30,7 +30,9 @@
       '<button type="button" class="hoja-nota__sig" aria-label="Nota siguiente">›</button></span>' +
       '<button type="button" class="hoja-nota__cerrar" aria-label="Cerrar">×</button></header>' +
       '<div class="hoja-nota__cuerpo"></div>';
-    Object.keys(opciones.estilo || {}).forEach(function (k) { el.style.setProperty(k, opciones.estilo[k]); });
+    var est = opciones.estilo || {};
+    Object.keys(est.vars || {}).forEach(function (k) { el.style.setProperty(k, est.vars[k]); });
+    (est.clases || []).forEach(function (c) { el.classList.add(c); });
     document.body.appendChild(el);
     var cab = el.querySelector('.hoja-nota__cab'), asa = el.querySelector('.hoja-nota__asa');
     var cuerpo = el.querySelector('.hoja-nota__cuerpo');
@@ -106,17 +108,78 @@
     };
   }
 
-  /* Colores de la hoja: el «color de nota» de Apariencia (o el papel suave de la paleta) */
-  function estiloHoja(ctx) {
-    var t = ctx.tema, pal = t.pal, extra = (t.a && t.a.extra) || {};
-    var base = /^#[0-9a-f]{6}$/i.test(extra.color_nota || '') ? extra.color_nota : pal.papelSuave;
-    var oscuro = t.oscuro;
+  /* ── Apariencia de la hoja (A-20): se edita en Administración → Apariencia → Notas al pie.
+     Se guarda en apariencia.extra.hoja_nota. Lo que no está definido toma el valor original. ── */
+  var HEX = /^#[0-9a-f]{6}$/i;
+  RA.HOJA = {
+    colores: [
+      ['Papeles', [['#FBF8F0', 'Hueso'], ['#F5EEDC', 'Crema'], ['#EFE6D2', 'Marfil'], ['#ECE3D9', 'Arena'], ['#EAD9A8', 'Manila'], ['#CDAE83', 'Kraft'], ['#DAD7CF', 'Gris archivo'], ['#FFFFFF', 'Blanco']]],
+      ['Tintes suaves', [['#CFE1EC', 'Azul ficha'], ['#CDEDEB', 'Aqua'], ['#D6EADA', 'Menta'], ['#DDE3CF', 'Salvia'], ['#F3EFB2', 'Limón'], ['#F8DCC4', 'Durazno'], ['#F4D6DC', 'Rosa'], ['#E2DCF0', 'Lila']]],
+      ['Tintas vivas', [['#FFE800', 'Amarillo riso'], ['#FFB000', 'Ámbar'], ['#FF6C2F', 'Naranja'], ['#FF48B0', 'Rosa flúor'], ['#5EC8E5', 'Aqua riso'], ['#0078BF', 'Azul riso'], ['#00A95C', 'Verde riso'], ['#765BA7', 'Violeta']]],
+      ['Oscuros', [['#1D1D3A', 'Tinta noche'], ['#2B2B2B', 'Carbón'], ['#1F3550', 'Azul noche'], ['#1F3B2D', 'Bosque'], ['#4A1F2C', 'Vino'], ['#3B2A20', 'Tabaco']]]
+    ],
+    patrones: ['ninguno', 'grano', 'puntos', 'trama', 'rayado', 'cuadricula', 'milimetrado', 'diagonal', 'tejido', 'anillos', 'ondas', 'lomos', 'damero'],
+    intensidad: { sutil: [0.09, 0.07], media: [0.16, 0.13], marcada: [0.26, 0.22] },
+    letra: { lectura: 'var(--f-texto)', titulos: 'var(--f-titulos)', interfaz: 'var(--f-ui)' },
+    tam: { pequena: 15, normal: 17, grande: 19 },
+    grosor: { fino: 2, medio: 4, grueso: 7 }
+  };
+  function de(v, lista, def) { return lista.indexOf(v) >= 0 ? v : def; }
+  /* Configuración completa de la hoja a partir de apariencia.extra (acepta el antiguo extra.color_nota) */
+  RA.configHoja = function (extra, pal) {
+    extra = extra || {};
+    var h = extra.hoja_nota || {}, fondo = HEX.test(h.fondo || '') ? h.fondo : (HEX.test(extra.color_nota || '') ? extra.color_nota : null);
     return {
-      '--hoja-fondo': oscuro ? RA.mezclar(base, '#14141C', 0.8) : base,
-      '--hoja-texto': oscuro ? '#F3F0E8' : pal.tinta,
-      '--hoja-pc': oscuro ? 'rgba(255,255,255,.07)' : 'rgba(20,20,40,.09)',
-      '--tc': ctx.tintas.tc, '--tc2': ctx.tintas.tc2, '--tc-sobre': ctx.tintas.sobre
+      fondo: fondo ? fondo.toUpperCase() : pal.papelSuave, fondoPropio: !!fondo,
+      patron: de(h.patron, RA.HOJA.patrones, 'grano'),
+      intensidad: de(h.intensidad, ['sutil', 'media', 'marcada'], 'sutil'),
+      texto: HEX.test(h.texto || '') ? h.texto.toUpperCase() : 'auto',
+      filete: de(h.filete, ['cuaderno', 'fijo', 'ninguno'], 'cuaderno'),
+      filete_color: HEX.test(h.filete_color || '') ? h.filete_color.toUpperCase() : pal.tinta,
+      grosor: de(h.grosor, ['fino', 'medio', 'grueso'], 'medio'),
+      marcas: de(h.marcas, ['cuaderno', 'fijo'], 'cuaderno'),
+      marcas_color: HEX.test(h.marcas_color || '') ? h.marcas_color.toUpperCase() : pal.tinta,
+      esquinas: de(h.esquinas, ['redondas', 'rectas'], 'redondas'),
+      sombra: de(h.sombra, ['suave', 'ninguna', 'desplazada'], 'suave'),
+      letra: de(h.letra, ['lectura', 'titulos', 'interfaz'], 'lectura'),
+      tam: de(h.tam, ['pequena', 'normal', 'grande'], 'normal'),
+      alto: de(+h.alto, [40, 50, 60, 70], 60),
+      noche: de(h.noche, ['oscurecer', 'igual'], 'oscurecer')
     };
+  };
+  /* Variables CSS y clases de la hoja. tintas: {tc, tc2, sobre} del cuaderno */
+  RA.estiloHojaDe = function (cfg, pal, oscuro, tintas) {
+    var fondo = cfg.fondo;
+    if (oscuro && cfg.noche === 'oscurecer' && RA.esClaro(fondo)) fondo = RA.mezclar(fondo, '#14141C', 0.8);
+    var claro = RA.esClaro(fondo);
+    var texto = cfg.texto !== 'auto' ? cfg.texto : (claro ? pal.tinta : '#F3F0E8');
+    var k = RA.HOJA.intensidad[cfg.intensidad][claro ? 0 : 1];
+    var filete = cfg.filete === 'ninguno' ? 'transparent' : cfg.filete === 'fijo' ? cfg.filete_color : tintas.tc;
+    var marca = cfg.marcas === 'fijo' ? cfg.marcas_color : tintas.tc;
+    // Las marcas de la cabecera deben leerse sobre el fondo de la hoja
+    if (Math.abs(RA.lum(marca) - RA.lum(fondo)) < 0.12) marca = texto;
+    var vars = {
+      '--hoja-fondo': fondo, '--hoja-texto': texto,
+      '--hoja-pc': claro ? 'rgba(20,20,40,' + k + ')' : 'rgba(255,255,255,' + k + ')',
+      '--hoja-filete': filete, '--hoja-filete-ancho': (cfg.filete === 'ninguno' ? 0 : RA.HOJA.grosor[cfg.grosor]) + 'px',
+      '--hoja-letra': RA.HOJA.letra[cfg.letra], '--hoja-tam': RA.HOJA.tam[cfg.tam] + 'px',
+      '--hoja-alto-max': cfg.alto,
+      '--hoja-marca': marca,
+      '--tc': tintas.tc, '--tc2': tintas.tc2, '--tc-sobre': tintas.sobre
+    };
+    var clases = ['hoja-nota--' + cfg.esquinas, 'hoja-nota--sombra-' + cfg.sombra];
+    if (cfg.patron !== 'ninguno') clases.push('p-' + cfg.patron);
+    return { vars: vars, clases: clases, alto: cfg.alto / 100 };
+  };
+  /* Color de las marcas en el texto y en la lista final (si en Apariencia se eligió un color fijo) */
+  RA.marcasNotaDe = function (cfg, pal) {
+    if (cfg.marcas !== 'fijo') return null;
+    var c = cfg.marcas_color;
+    return { '--np': c, '--np2': c, '--np-sobre': RA.lum(c) < 0.3 ? '#FFFFFF' : pal.tinta };
+  };
+  function estiloHoja(ctx) {
+    var t = ctx.tema, cfg = RA.configHoja(t.a && t.a.extra, t.pal);
+    return RA.estiloHojaDe(cfg, t.pal, t.oscuro, ctx.tintas);
   }
 
   /* ══ Notas al pie ════════════════════════════════════════════════ */
@@ -154,8 +217,10 @@
 
     var actual = -1, y0 = null, empujado = false;
     var libro = ctx.raiz.querySelector('.libro');
+    var est = estiloHoja(ctx), mfijo = RA.marcasNotaDe(RA.configHoja(ctx.tema.a && ctx.tema.a.extra, ctx.tema.pal), ctx.tema.pal);
+    if (mfijo) Object.keys(mfijo).forEach(function (k) { ctx.raiz.style.setProperty(k, mfijo[k]); });
     var hoja = crearHoja({
-      estilo: estiloHoja(ctx),
+      estilo: est,
       dentro: function (t) { return !!t.closest('.np-marca'); },
       alNavegar: function (d) { var n = actual + d; if (n >= 0 && n < total) abrir(n, true); },
       alTecla: function (ev) {
@@ -192,7 +257,7 @@
 
     /* La hoja nunca tapa su marca: el texto sube lo necesario */
     function asegurarVisible(marca, navegando) {
-      var alto = Math.min(hoja.alto(), window.innerHeight * 0.6), vh = window.innerHeight;
+      var alto = Math.min(hoja.alto(), window.innerHeight * est.alto), vh = window.innerHeight;
       var limite = vh - alto - 18, barra = ctx.raiz.querySelector('.barra');
       var techo = barra ? Math.max(0, barra.getBoundingClientRect().bottom) + 12 : 12;
       if (ctx.pag) {

@@ -726,3 +726,22 @@ body.ap-grande-abierta { overflow: hidden; }
 .ap-muestra__nota { margin-top: -4px; }
 .ap-enlace { border: 0; padding: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
 @media (max-width: 720px) { .ap-tam__fila { grid-template-columns: 1fr 58px; } .ap-tam__fila span { grid-column: 1 / -1; } }
+
+/* ══ A-20 · Editor de la hoja de notas al pie (Apariencia) ═══════════ */
+.ap-hn-vista { position: sticky; top: 8px; z-index: 3; background: var(--a-fondo); padding: 6px 0 10px; border-bottom: 1px solid var(--a-linea); }
+.ap-hn-vista__barra { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.ap-hoja-muestra { border: 1px solid var(--a-linea); padding: 18px 0 0; overflow: hidden; font-family: var(--f-texto); }
+.ap-hoja-muestra__texto { margin: 0 22px 16px; font-size: 16px; line-height: 1.6; }
+.ap-hoja-muestra .hoja-nota { max-height: none; }
+.ap-hoja-muestra .hoja-nota__cuerpo { overflow: visible; }
+.ap-hoja-muestra .np-marca { cursor: default; }
+.ap-hn-grupo { display: flex; flex-direction: column; gap: 4px; }
+.ap-hn-grupo__t { font-size: 12px; color: var(--a-suave); }
+.ap-hn-colores { display: flex; flex-wrap: wrap; gap: 6px; }
+.ap-hn-color { width: 30px; height: 30px; padding: 0; border: 1px solid var(--a-linea); cursor: pointer; border-radius: 50%; }
+.ap-hn-color[aria-pressed="true"] { outline: 3px solid var(--a-texto); outline-offset: 2px; }
+.ap-hn-otro { align-items: center; }
+.ap-hn-propio { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border: 1.5px dashed var(--a-linea); cursor: pointer; font-size: 13px; font-weight: 500; }
+.ap-hn-propio input[type="color"] { width: 32px; height: 28px; padding: 0; border: 1px solid var(--a-linea); background: none; cursor: pointer; }
+.ap-hn .ap-patron { height: 64px; }
+.ap-hn .ap-dos { display: flex; }
