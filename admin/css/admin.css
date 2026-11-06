@@ -567,12 +567,46 @@ body.ap-grande-abierta { overflow: hidden; }
 .au-mk__borrar { flex: none; width: 28px; height: 28px; }
 .au-mk__hueco { flex: none; width: 28px; }
 .au-mk__resumen { margin: 0; }
+.au-ed__abrir[hidden] { display: none; }
+/* Solo las citas: cada cita con sus campos Inicio y Fin (6 nov 2026) */
+.au-mk--citas .au-mk__lista { max-height: 50vh; }
+.au-mk__fila--cita { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px 12px; }
+.au-mk__cabeza { display: flex; gap: 8px; align-items: flex-start; }
+.au-mk__fila--cita .au-mk__tipo { margin-top: 1px; }
+.au-mk__fila--cita.completa .au-mk__tipo { background: #0E7A4E; border-color: #0E7A4E; color: #fff; }
+.au-mk__fila--cita.invalida .au-mk__tipo { background: #C62F2F; border-color: #C62F2F; color: #fff; }
+.au-mk__fila--cita.suena .au-mk__tipo { background: var(--tA); border-color: var(--tA); color: #fff; }
+.au-mk__tramo { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding-left: 34px; }
+.au-mk__campo { display: inline-flex; align-items: center; gap: 6px; }
+.au-mk__etq { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--a-suave); min-width: 3.4em; }
+.au-mk__campo input {
+  width: 92px; padding: 6px 8px; border: 1.5px solid var(--a-linea); background: var(--a-panel); color: var(--a-texto);
+  font: 500 14px/1.2 var(--f-ui); font-variant-numeric: tabular-nums; letter-spacing: 0;
+}
+.au-mk__campo input::placeholder { color: var(--a-suave); opacity: .7; }
+.au-mk__campo.objetivo input { border-color: var(--a-texto); outline: 2px solid var(--tA); outline-offset: 1px; }
+.au-mk__campo.ilegible input, .au-mk__fila--cita.invalida .au-mk__campo:not(.vacio) input { border-color: #C62F2F; color: #B4261F; }
+.au-mk__ahora { width: auto; padding: 0 8px; font-size: 12px; }
+.au-mk__largo { font-size: 12px; color: var(--a-suave); font-variant-numeric: tabular-nums; min-width: 6.5em; }
+.au-mk__probar { text-transform: none; letter-spacing: 0; }
+.au-mk__probar:disabled { opacity: .4; cursor: default; }
+.au-mk__probar.probando { background: var(--a-texto); color: var(--a-fondo); border-color: var(--a-texto); }
+.au-mk__fila--cita .au-mk__borrar { margin-left: auto; }
+.au-mk__borrar[hidden], .au-mk__error[hidden] { display: none; }
+.au-mk__error { margin: 0 0 0 34px; font-size: 12.5px; font-weight: 600; color: #B4261F; }
+.admin-oscuro .au-mk__error, .admin-oscuro .au-mk__campo.ilegible input { color: #FF9A8B; }
 @media (max-width: 720px) {
   .au-ed__sinc { grid-template-columns: 1fr; }
   .au-mk__fila { flex-wrap: wrap; }
   .au-mk__texto { flex-basis: calc(100% - 36px); }
   .au-mk__fila select { margin-left: 34px; }
   .au-mk__hueco { display: none; }
+  .au-mk__reproductor { flex-wrap: wrap; }
+  .au-mk__rango { order: 9; flex-basis: 100%; }
+  .au-mk__fila--cita { flex-wrap: nowrap; }
+  .au-mk__cabeza { flex-wrap: wrap; }
+  .au-mk__tramo { padding-left: 0; }
+  .au-mk__error { margin-left: 0; }
 }
 
 /* ── A-04 · Generador de portadas ─────────────────────────────────── */

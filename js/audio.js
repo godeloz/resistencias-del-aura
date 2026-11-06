@@ -4,7 +4,9 @@
      voces (por ejemplo, las citas de Alexa Gómez en su propia voz).
    · Tres estados de sincronización, que elige el autor en cada entrada:
        no        texto y audio van por separado
-       citas     solo las citas de otra voz tienen su tramo y su botón
+       citas     el archivo es solo la fuente de las citas: cada cita tiene
+                 su inicio y su fin, y un botón discreto que hace sonar solo
+                 ese fragmento (sin reproductor ni «Escuchar»; 6 nov 2026)
        completa  cada párrafo sabe cuándo empieza: se ilumina, se sigue
                  la voz y se puede saltar a un párrafo
    · Las marcas se guardan una por bloque del texto, con una huella del
@@ -42,6 +44,24 @@
       return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (x < 10 ? '0' : '') + x;
     },
     minutos: function (s) { return Math.max(1, Math.round((s || 0) / 60)); },
+    /* Con décimas, para el marcador: 1:23,4 */
+    tiempoFino: function (s) {
+      if (s == null || !isFinite(s)) return '';
+      s = Math.max(0, Math.round(s * 10) / 10);
+      return A.tiempo(s) + ',' + Math.round((s % 1) * 10) % 10;
+    },
+    /* Lo que el autor escribe a mano: «83», «83,4», «1:23», «1:23.4», «1:02:03,5». Vacío = null; ilegible = NaN */
+    leerTiempo: function (txt) {
+      var s = String(txt == null ? '' : txt).trim().replace(/\s+/g, '').replace(',', '.');
+      if (!s) return null;
+      if (!/^\d+(:\d{1,2}){0,2}(\.\d+)?$/.test(s)) return NaN;
+      var partes = s.split(':'), seg = parseFloat(partes.pop()), min = partes.length ? +partes.pop() : 0, h = partes.length ? +partes.pop() : 0;
+      if (s.indexOf(':') >= 0 && seg >= 60) return NaN;
+      if (h && min >= 60) return NaN;
+      return Math.round((h * 3600 + min * 60 + seg) * 10) / 10;
+    },
+    /* Una cita con su tramo completo: inicio y fin, y el fin después del inicio */
+    tramoValido: function (mk) { return !!(mk && mk.t != null && mk.f != null && isFinite(+mk.t) && isFinite(+mk.f) && +mk.f > +mk.t + 0.05); },
     /* Quién habla: 0 = narra, 1… = las voces */
     voces: function (a, autor) {
       var l = [String((a && a.narra) || 'Diego Agudelo').trim() || 'Diego Agudelo'];
@@ -138,7 +158,7 @@
         var mk = al[i];
         if (mk && mk.editada) r.editados++;
         var otraVoz = mk && mk.v > 0;
-        if (f.cita && (otraVoz || s !== 'completa')) { r.citas++; if (mk && mk.t != null && (s === 'completa' || mk.f != null)) r.citasMarcadas++; }
+        if (f.cita && (otraVoz || s !== 'completa')) { r.citas++; if (mk && mk.t != null && (s === 'completa' || A.tramoValido(mk))) r.citasMarcadas++; }
         if (mk && mk.t != null) r.marcados++; else r.faltan++;
       });
       return r;
@@ -188,9 +208,47 @@
     G.escribir('audio-pos', p);
   }
 
+  /* Imagen de la pantalla bloqueada: el color del cuaderno, sus formas (A-04) y su número */
+  function portadaAudio(e, tema, bgCuaderno, st) {
+    try {
+      var c = document.createElement('canvas'); c.width = c.height = 512;
+      var g = c.getContext('2d');
+      g.fillStyle = bgCuaderno; g.fillRect(0, 0, 512, 512);
+      if (st.receta && !st.imagen) dibujarFormas(g, st.receta, 512, tema);
+      g.globalCompositeOperation = 'source-over';
+      g.fillStyle = e.tipo === 'apunte' ? RA.fichaApunte(e, tema).texto : st.num;
+      g.font = '600 220px Jost, sans-serif'; g.textBaseline = 'top';
+      g.fillText(RA.numeroCorto(e), 40, 40);
+      return c.toDataURL('image/png');
+    } catch (x) { return ''; }
+  }
+  function dibujarFormas(g, r, L, tema) {
+    r.formas.forEach(function (f) {
+      var b = RA.cajaForma(f, L, L), col = RA.colorRef(f.c, tema) || tema.tituloA;
+      g.save();
+      g.globalCompositeOperation = r.mezcla === 'normal' ? 'source-over' : 'multiply';
+      g.translate(b.left + b.w / 2, b.top + b.h / 2); g.rotate((f.r || 0) * Math.PI / 180);
+      var x = -b.w / 2, y = -b.h / 2;
+      g.fillStyle = col; g.strokeStyle = col; g.beginPath();
+      if (f.t === 'circulo') g.arc(0, 0, b.w / 2, 0, Math.PI * 2);
+      else if (f.t === 'anillo') { g.lineWidth = Math.max(2, b.w * f.g / 2); g.arc(0, 0, b.w / 2 - g.lineWidth / 2, 0, Math.PI * 2); g.stroke(); g.restore(); return; }
+      else if (f.t === 'medio') { g.arc(0, b.h / 2, b.w / 2, Math.PI, 0); g.closePath(); }
+      else if (f.t === 'cuarto') { g.moveTo(x + b.w, y + b.h); g.lineTo(x, y + b.h); g.arc(x + b.w, y + b.h, b.w, Math.PI, Math.PI * 1.5); g.closePath(); }
+      else if (f.t === 'triangulo') { g.moveTo(0, y); g.lineTo(x + b.w, y + b.h); g.lineTo(x, y + b.h); g.closePath(); }
+      else g.rect(x, y, b.w, b.h);
+      g.fill(); g.restore();
+    });
+  }
+  function soltarAudio() {
+    if (!AU.el) return;
+    try { AU.el.pause(); } catch (x) { /* nada */ }
+    AU.el.removeAttribute('src'); try { AU.el.load(); } catch (x) { /* nada */ }
+  }
+
   RA.montarAudio = function (ctx) {
     var e = ctx.e, a = e.audio;
     if (!A.tiene(a)) return function () { };
+    if (A.sinc(a) === 'citas') return montarCitas(ctx);
     var sitio = ctx.sitio || {}, tema = ctx.tema, raiz = ctx.raiz, cuerpo = raiz.querySelector('.cuerpo');
     var sinc = A.sinc(a), autor = (sitio.proyecto && sitio.proyecto.autor) || '';
     var nombres = A.voces(a, autor);
@@ -201,10 +259,10 @@
     var src = A.url(a, A.base(sitio.apariencia), ctx.prefijoAudio || '');
 
     /* El <audio>: se reutiliza si es la misma entrada que se vuelve a pintar */
-    var sigue = AU.el && AU.id === e.id && RA.audioContinuar === e.id;
+    var sigue = AU.el && AU.id === e.id && AU.modo !== 'citas' && RA.audioContinuar === e.id;
     RA.audioContinuar = null;
     if (!sigue) {
-      if (AU.el) { try { AU.el.pause(); } catch (x) { /* nada */ } AU.el.removeAttribute('src'); AU.el.load(); }
+      soltarAudio();
       AU = { el: new Audio(), id: e.id, seguir: true, abierta: false };
       AU.el.preload = 'metadata';
       AU.el.src = src;
@@ -530,36 +588,8 @@
     /* ── Pantalla bloqueada y controles del sistema (Media Session) ── */
     var portadaURL = null;
     function imagenPortada() {
-      if (portadaURL) return portadaURL;
-      try {
-        var c = document.createElement('canvas'); c.width = c.height = 512;
-        var g = c.getContext('2d');
-        g.fillStyle = bgCuaderno; g.fillRect(0, 0, 512, 512);
-        if (st.receta && !st.imagen) dibujarFormas(g, st.receta, 512);   // las formas de la portada (A-04)
-        g.globalCompositeOperation = 'source-over';
-        g.fillStyle = e.tipo === 'apunte' ? RA.fichaApunte(e, tema).texto : st.num;
-        g.font = '600 220px Jost, sans-serif'; g.textBaseline = 'top';
-        g.fillText(RA.numeroCorto(e), 40, 40);
-        portadaURL = c.toDataURL('image/png');
-      } catch (x) { portadaURL = ''; }
+      if (portadaURL == null) portadaURL = portadaAudio(e, tema, bgCuaderno, st);
       return portadaURL;
-    }
-    function dibujarFormas(g, r, L) {
-      r.formas.forEach(function (f) {
-        var b = RA.cajaForma(f, L, L), col = RA.colorRef(f.c, tema) || tema.tituloA;
-        g.save();
-        g.globalCompositeOperation = r.mezcla === 'normal' ? 'source-over' : 'multiply';
-        g.translate(b.left + b.w / 2, b.top + b.h / 2); g.rotate((f.r || 0) * Math.PI / 180);
-        var x = -b.w / 2, y = -b.h / 2;
-        g.fillStyle = col; g.strokeStyle = col; g.beginPath();
-        if (f.t === 'circulo') g.arc(0, 0, b.w / 2, 0, Math.PI * 2);
-        else if (f.t === 'anillo') { g.lineWidth = Math.max(2, b.w * f.g / 2); g.arc(0, 0, b.w / 2 - g.lineWidth / 2, 0, Math.PI * 2); g.stroke(); g.restore(); return; }
-        else if (f.t === 'medio') { g.arc(0, b.h / 2, b.w / 2, Math.PI, 0); g.closePath(); }
-        else if (f.t === 'cuarto') { g.moveTo(x + b.w, y + b.h); g.lineTo(x, y + b.h); g.arc(x + b.w, y + b.h, b.w, Math.PI, Math.PI * 1.5); g.closePath(); }
-        else if (f.t === 'triangulo') { g.moveTo(0, y); g.lineTo(x + b.w, y + b.h); g.lineTo(x, y + b.h); g.closePath(); }
-        else g.rect(x, y, b.w, b.h);
-        g.fill(); g.restore();
-      });
     }
     function ponerMetadatos(v) {
       if (!('mediaSession' in navigator) || !window.MediaMetadata) return;
@@ -785,4 +815,176 @@
       }
     };
   };
+
+  /* ══ Solo las citas (6 nov 2026) ═════════════════════════════════
+     El archivo es la fuente de las citas, no una narración: cada cita con
+     inicio y fin tiene un botón discreto que hace sonar solo su fragmento,
+     y el audio se detiene en el fin. Sin barra, sin «Escuchar», sin modo
+     escucha ni posición guardada. Una cita a la vez. */
+  function montarCitas(ctx) {
+    var e = ctx.e, a = e.audio, sitio = ctx.sitio || {}, tema = ctx.tema, raiz = ctx.raiz, cuerpo = raiz.querySelector('.cuerpo');
+    var autor = (sitio.proyecto && sitio.proyecto.autor) || '', nombres = A.voces(a, autor);
+    var st = RA.estiloPortada(e, tema), bgCuaderno = e.tipo === 'apunte' ? RA.fichaApunte(e, tema).color : st.bg;
+    var tinta0 = ctx.tintas ? ctx.tintas.tc : tema.pal.tinta;
+    var colores = nombres.map(function (x, v) { return A.colorVoz(v, tema, bgCuaderno, tinta0); });
+
+    var fuente = A.bloquesDeHTML(e.cuerpo_html), vistos = A.bloques(cuerpo), firmas = fuente.map(A.firma);
+    var marcas = A.alinear(firmas, a.marcas || []), citas = [];
+    firmas.forEach(function (f, i) {
+      var mk = marcas[i], q = vistos[i];
+      if (!f.cita || !q || q.tagName !== 'BLOCKQUOTE' || !A.tramoValido(mk)) return;
+      var v = +mk.v || 0; if (v < 0 || v >= nombres.length) v = 0;
+      citas.push({ el: q, ini: +mk.t, fin: +mk.f, v: v });
+    });
+    if (!citas.length) return function () { };
+
+    var src = A.url(a, A.base(sitio.apariencia), ctx.prefijoAudio || '');
+    var sigue = AU.el && AU.id === e.id && AU.modo === 'citas' && RA.audioContinuar === e.id;
+    RA.audioContinuar = null;
+    if (!sigue) {
+      soltarAudio();
+      AU = { el: new Audio(), id: e.id, modo: 'citas', k: -1, terminada: false };
+      AU.el.preload = 'metadata';
+      AU.el.src = src;
+    }
+    var el = AU.el, vivo = true, raf = 0, reloj = 0, portadaURL = null;
+
+    /* ── El botón de cada cita ── */
+    citas.forEach(function (c, k) {
+      var q = c.el, sobre = RA.esClaro(colores[c.v]) ? tema.pal.tinta : '#FFFFFF';
+      q.style.setProperty('--au-voz', colores[c.v]);   // para el resaltado mientras suena
+      q.style.setProperty('--au-voz-sobre', sobre);
+      if (c.v > 0) q.classList.add('au-con-voz');   // la cita en otra voz toma su tinta, como en la sincronización completa
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'au-cita au-cita--sola';
+      b.style.setProperty('--au-cv', colores[c.v]);   // el CSS lo pasa a --au-voz (la cita destacada lo cambia)
+      b.style.setProperty('--au-cs', sobre);
+      c.quien = c.v > 0 ? ' en la voz de ' + nombres[c.v] : '';
+      c.largo = Math.max(0.1, c.fin - c.ini);
+      b.title = 'Escuchar la cita' + c.quien;
+      b.innerHTML = '<span class="au-cita__icono">' + IC.play + '</span><span class="au-cita__texto"></span><span class="au-cita__prog" aria-hidden="true"><i></i></span>';
+      q.appendChild(b);
+      c.b = b; c.icono = b.querySelector('.au-cita__icono'); c.txt = b.querySelector('.au-cita__texto'); c.prog = b.querySelector('.au-cita__prog i');
+      b.onclick = function () { tocar(k); };
+    });
+    function largoTxt(s) { return A.tiempo(Math.ceil(s - 0.05)); }
+
+    /* ── Sonar, pausar y detenerse en el fin ── */
+    function tocar(k) {
+      var c = citas[k]; if (!c) return;
+      if (AU.k === k && !el.paused) { el.pause(); return; }
+      var t = el.currentTime || 0;
+      var desdeInicio = AU.k !== k || AU.terminada || t < c.ini - 0.3 || t >= c.fin - 0.05;
+      AU.k = k; AU.terminada = false; AU.error = false;
+      try { el.volume = 1; } catch (x) { /* volumen fijo (iOS) */ }
+      if (desdeInicio) ponerEn(c.ini);
+      var pr = el.play();
+      if (pr && pr.catch) pr.catch(function (err) { if (err && err.name !== 'AbortError') console.warn('Audio:', err.message); pintar(); });
+      ponerMetadatos(c); pintar();
+    }
+    function ponerEn(t) {
+      if (el.readyState >= 1) { el.currentTime = t; return; }
+      // Sin los metadatos todavía: se salta en cuanto lleguen (y por si el navegador ya lo admite, de una vez)
+      try { el.currentTime = t; } catch (x) { /* nada */ }
+      el.addEventListener('loadedmetadata', function una() { el.removeEventListener('loadedmetadata', una); if (!AU.terminada && Math.abs(el.currentTime - t) > 0.3) el.currentTime = t; });
+    }
+    function vigilar() {
+      cancelAnimationFrame(raf); clearTimeout(reloj);
+      if (!vivo || el.paused || AU.k < 0 || AU.terminada) return;
+      var c = citas[AU.k], t = el.currentTime || 0, vel = el.playbackRate || 1;
+      if (t >= c.fin - 0.02) { cortar(); return; }
+      var falta = c.fin - t;
+      if (falta < 0.15) { try { el.volume = Math.max(0, falta / 0.15); } catch (x) { /* nada */ } }   // sin golpe al cortar
+      pintar();
+      raf = requestAnimationFrame(vigilar);
+      // Con la pantalla apagada no hay cuadros: el reloj corta a tiempo igual
+      reloj = setTimeout(vigilar, Math.max(15, Math.min(250, falta / vel * 1000 - 10)));
+    }
+    function cortar() {
+      cancelAnimationFrame(raf); clearTimeout(reloj);
+      AU.terminada = true;
+      el.pause();
+      try { el.volume = 1; } catch (x) { /* nada */ }
+      pintar();
+    }
+
+    /* ── Pintar los botones ── */
+    function pintar() {
+      if (!vivo) return;
+      citas.forEach(function (c, k) {
+        var activa = AU.k === k && !AU.terminada, sonando = activa && !el.paused;
+        var pos = activa ? Math.max(0, Math.min(c.largo, (el.currentTime || 0) - c.ini)) : 0;
+        var pausada = activa && el.paused && pos > 0.3;
+        var txt = activa && AU.error ? 'No se pudo cargar el audio'
+          : sonando ? A.tiempo(pos) + ' / ' + largoTxt(c.largo)
+          : pausada ? 'En pausa · ' + A.tiempo(pos) + ' / ' + largoTxt(c.largo)
+          : 'Escuchar · ' + largoTxt(c.largo);
+        if (c.txt.textContent !== txt) c.txt.textContent = txt;
+        if (c.sonando !== sonando) {
+          c.sonando = sonando;
+          c.icono.innerHTML = sonando ? IC.pausa : IC.play;
+          c.b.classList.toggle('activo', sonando);
+          c.b.setAttribute('aria-pressed', sonando ? 'true' : 'false');
+          c.el.classList.toggle('au-voz-activa', sonando);
+        }
+        c.b.classList.toggle('en-pausa', pausada);
+        var lbl = (sonando ? 'Pausar la cita' : 'Escuchar la cita') + c.quien + ' · ' + largoTxt(c.largo);
+        if (c.b.getAttribute('aria-label') !== lbl) c.b.setAttribute('aria-label', lbl);
+        c.prog.style.transform = 'scaleX(' + (activa ? (pos / c.largo).toFixed(3) : 0) + ')';
+      });
+    }
+
+    /* ── Pantalla bloqueada: el nombre de la voz y la cita anterior / siguiente ── */
+    function ponerMetadatos(c) {
+      if (!('mediaSession' in navigator)) return;
+      var ms = navigator.mediaSession;
+      try {
+        if (window.MediaMetadata) {
+          if (portadaURL == null) portadaURL = portadaAudio(e, tema, bgCuaderno, st);
+          ms.metadata = new MediaMetadata({
+            title: (c.v > 0 ? nombres[c.v] : 'Cita') + ' · ' + e.titulo,
+            artist: c.v > 0 ? nombres[c.v] : nombres[0],
+            album: RA.antetitulo(e) + ' · ' + ((sitio.proyecto && sitio.proyecto.titulo) || ''),
+            artwork: portadaURL ? [{ src: portadaURL, sizes: '512x512', type: 'image/png' }] : []
+          });
+        }
+      } catch (x) { /* navegador sin soporte completo */ }
+      var h = {
+        play: function () { if (AU.k >= 0) tocar(AU.k); },
+        pause: function () { el.pause(); },
+        previoustrack: AU.k > 0 ? function () { tocar(AU.k - 1); } : null,
+        nexttrack: AU.k < citas.length - 1 ? function () { tocar(AU.k + 1); } : null,
+        seekbackward: null, seekforward: null, seekto: null
+      };
+      Object.keys(h).forEach(function (k) { try { ms.setActionHandler(k, h[k]); } catch (x) { /* acción no soportada */ } });
+    }
+
+    function alSonar() { vigilar(); pintar(); }
+    function alPausa() { cancelAnimationFrame(raf); clearTimeout(reloj); pintar(); }
+    function alTiempo() { if (!el.paused) vigilar(); else pintar(); }
+    function alTerminar() { cortar(); }
+    function alError() { AU.error = true; pintar(); }
+    el.addEventListener('play', alSonar);
+    el.addEventListener('pause', alPausa);
+    el.addEventListener('timeupdate', alTiempo);
+    el.addEventListener('ended', alTerminar);
+    el.addEventListener('error', alError);
+    pintar();
+    if (sigue && !el.paused) vigilar();
+    ctx.audio = { el: el, citas: citas.length };
+
+    return function limpiar() {
+      vivo = false; cancelAnimationFrame(raf); clearTimeout(reloj);
+      el.removeEventListener('play', alSonar);
+      el.removeEventListener('pause', alPausa);
+      el.removeEventListener('timeupdate', alTiempo);
+      el.removeEventListener('ended', alTerminar);
+      el.removeEventListener('error', alError);
+      if (RA.audioContinuar !== e.id) {
+        el.pause(); AU.k = -1; AU.terminada = false;
+        try { el.volume = 1; } catch (x) { /* nada */ }
+        if ('mediaSession' in navigator) { try { navigator.mediaSession.metadata = null; } catch (x) { /* nada */ } }
+      }
+    };
+  }
 })();

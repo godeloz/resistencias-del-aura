@@ -344,7 +344,9 @@
       var md = modoDe(e);
       var t = S.tema, st = RA.estiloPortada(e, t);
       var esApunte = e.tipo === 'apunte';
-      var conAudio = RA.audio && RA.audio.tiene(e.audio);
+      // Con «solo las citas», el audio no se ofrece entero: cada cita tiene su botón (lo pone audio.js)
+      var tieneAudio = RA.audio && RA.audio.tiene(e.audio);
+      var conAudio = tieneAudio && RA.audio.sinc(e.audio) !== 'citas';
       var botonEscuchar = conAudio ? '<button type="button" class="boton boton--tinta boton-escuchar" data-escuchar>' + RA.iconoAudio(16) + ' <span class="boton-escuchar__texto">Escuchar' +
         (e.audio.duracion ? ' · ' + RA.audio.minutos(e.audio.duracion) + ' min' : '') + '</span></button>' : '';
       var creditosAudio = conAudio ? '<p class="creditos-audio">' + esc(RA.audio.creditos(e.audio, S.sitio.proyecto.autor)) + '</p>' : '';
@@ -424,7 +426,7 @@
       if (md.modo === 'paginas') ctx.pag = montarPaginas(ctx);
       if (ctx.pag) limpiezas.push(ctx.pag.destruir);
       if (RA.montarReacciones && !vistaId) limpiezas.push(RA.montarReacciones(ctx));
-      if (RA.montarAudio && conAudio) limpiezas.push(RA.montarAudio(ctx));
+      if (RA.montarAudio && tieneAudio) limpiezas.push(RA.montarAudio(ctx));
       S.limpiar = function () { limpiezas.forEach(function (f) { f(); }); cerrarAjustes(); quitarAviso(); S.ctx = null; };
 
       if (restaurar != null) irAFraccion(ctx, restaurar);

@@ -4,7 +4,8 @@
    · Ventana «Audio del cuaderno»: archivo, créditos, sincronización.
    · Ventana «Marcar tiempos»: se escucha el audio y se pulsa la barra
      espaciadora cuando empieza cada bloque (o el inicio y el fin de cada
-     cita en otra voz). Las marcas se guardan una por bloque, con su huella,
+     cita en otra voz). Con «solo las citas», cada cita tiene dos campos,
+     Inicio y Fin, que también se escriben a mano (marcarCitas). Las marcas se guardan una por bloque, con su huella,
      para que sigan a su párrafo aunque el texto cambie después.
    El audio va en el campo «audio» de la entrada (SQL 08) y se publica
    como los demás campos: mientras no publiques, queda en la copia de trabajo.
@@ -40,12 +41,17 @@
     if (s === 'completa') h += r.faltan ? '<span class="au-ad__alerta">' + r.marcados + ' de ' + r.total + ' bloques con su tiempo · faltan ' + r.faltan + '</span>'
       : '<span class="au-ad__ok">Los ' + r.total + ' bloques tienen su tiempo</span>';
     if (s === 'citas') h += !r.citas ? '<span class="au-ad__alerta">El texto no tiene citas: usa el botón «Cita» del editor</span>'
-      : r.citasMarcadas < r.citas ? '<span class="au-ad__alerta">' + r.citasMarcadas + ' de ' + r.citas + (r.citas === 1 ? ' cita marcada' : ' citas marcadas') + '</span>'
+      : r.citasMarcadas < r.citas ? '<span class="au-ad__alerta">' + r.citasMarcadas + ' de ' + r.citas + (r.citas === 1 ? ' cita con inicio y fin' : ' citas con inicio y fin') + ' · las demás no suenan</span>'
       : '<span class="au-ad__ok">' + (r.citas === 1 ? 'La cita tiene' : 'Las ' + r.citas + ' citas tienen') + ' su tramo</span>';
     if (s === 'no') h += '<span class="ed-nota">Texto y audio van por separado: el lector puede pausar y seguir leyendo.</span>';
     if (s !== 'no' && r.editados) h += '<span class="ed-nota">' + r.editados + (r.editados === 1 ? ' bloque cambió' : ' bloques cambiaron') + ' desde que marcaste: las marcas los siguen. Revisa que coincidan.</span>';
     if (a.revisar && s !== 'no') h += '<span class="au-ad__alerta">Reemplazaste el audio: revisa las marcas</span>';
     return h;
+  }
+  function creditosPanel(a, api) {
+    if (AU.sinc(a) !== 'citas') return AU.creditos(a, api.autor);
+    var v = AU.voces(a, api.autor);
+    return 'Las citas suenan solas · ' + (v.length > 1 ? 'voces: ' + v.slice(1).join(', ') : 'voz: ' + v[0]) + '. Sin reproductor en la lectura.';
   }
   function seccionHTML(api) {
     var a = api.audio();
@@ -55,8 +61,8 @@
     return '<div class="au-ad">' +
       '<div class="au-ad__archivo"><span class="au-ad__icono">' + RA.iconoAudio(16) + '</span><span><b>' + esc(nombre) + '</b>' +
         (a.duracion ? ' · ' + AU.tiempo(a.duracion) : ' · <span class="au-ad__alerta">sin duración</span>') + '</span></div>' +
-      '<span class="ed-nota">' + esc(AU.creditos(a, api.autor)) + '</span>' +
-      '<span class="au-ad__estado">' + esc(AU.NOMBRE_SINC[AU.sinc(a)]) + (a.abrir_escucha ? ' · abre en modo escucha' : '') + '</span>' +
+      '<span class="ed-nota">' + esc(creditosPanel(a, api)) + '</span>' +
+      '<span class="au-ad__estado">' + esc(AU.NOMBRE_SINC[AU.sinc(a)]) + (a.abrir_escucha && AU.sinc(a) !== 'citas' ? ' · abre en modo escucha' : '') + '</span>' +
       resumenHTML(a, api) +
       '<div class="au-ad__acciones"><button type="button" class="a-boton a-boton--fino" data-audio="editar">Editar audio</button>' +
         (AU.sinc(a) !== 'no' ? '<button type="button" class="a-boton a-boton--primario a-boton--fino" data-audio="marcar">Marcar tiempos</button>' : '') +
@@ -91,11 +97,11 @@
           '<button type="button" class="a-boton a-boton--fino au-ed__mas" data-a="voz">+ Añadir voz</button>' +
           (refs.length ? '' : '<span class="ed-nota">Para vincular una voz a su referente, primero vincúlalo a la entrada en «Referentes del Moodboard».</span>') + '</div>' +
         '<div class="a-campo"><span>Sincronización</span><div class="au-ed__sinc" role="radiogroup" aria-label="Sincronización">' +
-          [['no', 'Sin sincronizar', 'Texto y audio van por separado.'], ['citas', 'Solo las citas', 'Las citas en otra voz tienen su botón. El resto no se ilumina.'],
+          [['no', 'Sin sincronizar', 'Texto y audio van por separado.'], ['citas', 'Solo las citas', 'Cada cita suena sola, de su inicio a su fin, con un botón discreto. Sin reproductor ni «Escuchar».'],
             ['completa', 'Completa', 'Párrafos y citas marcados: se ilumina y se sigue la voz.']].map(function (o) {
             return '<button type="button" role="radio" data-sinc="' + o[0] + '" aria-checked="' + (a.sinc === o[0]) + '"><b>' + o[1] + '</b><span>' + o[2] + '</span></button>';
           }).join('') + '</div></div>' +
-        '<label class="ap-check"><input type="checkbox" data-k="abrir_escucha"' + (a.abrir_escucha ? ' checked' : '') + '> Abrir el cuaderno directamente en modo escucha</label>';
+        '<label class="ap-check au-ed__abrir"' + (a.sinc === 'citas' ? ' hidden' : '') + '><input type="checkbox" data-k="abrir_escucha"' + (a.abrir_escucha ? ' checked' : '') + '> Abrir el cuaderno directamente en modo escucha</label>';
       donde();
     }
     function donde() {
@@ -139,7 +145,11 @@
       if (b.getAttribute('data-a') === 'probar') return probar();
       if (b.getAttribute('data-a') === 'voz') { a.voces.push({ nombre: '' }); pintar(); var ins = cuerpo.querySelectorAll('[data-voz]'); ins[ins.length - 1].focus(); return; }
       if (b.hasAttribute('data-quitar-voz')) { a.voces.splice(+b.getAttribute('data-quitar-voz'), 1); pintar(); return; }
-      if (b.hasAttribute('data-sinc')) { a.sinc = b.getAttribute('data-sinc'); cuerpo.querySelectorAll('[data-sinc]').forEach(function (x) { x.setAttribute('aria-checked', x === b); }); }
+      if (b.hasAttribute('data-sinc')) {
+        a.sinc = b.getAttribute('data-sinc');
+        cuerpo.querySelectorAll('[data-sinc]').forEach(function (x) { x.setAttribute('aria-checked', x === b); });
+        cuerpo.querySelector('.au-ed__abrir').hidden = a.sinc === 'citas';   // con solo las citas no hay modo escucha
+      }
     });
     pintar();
     var nuevo = !AU.tiene(a0);
@@ -153,7 +163,7 @@
         var o = { nombre: String(x.nombre).trim() }; if (x.referente_id) o.referente_id = x.referente_id; return o;
       });
       a.narra = String(a.narra || '').trim() || narradorDefecto(api);
-      if (!a.abrir_escucha) delete a.abrir_escucha;
+      if (!a.abrir_escucha || a.sinc === 'citas') delete a.abrir_escucha;
       // Si se cambió el archivo y ya había marcas, quedan por revisar
       if (a0.archivo && a0.archivo !== a.archivo && (a.marcas || []).some(function (m) { return m && m.t != null; })) a.revisar = true;
       var listo = a.duracion ? Promise.resolve() : medir(urlDe(a, api)).then(function (d) { a.duracion = Math.round(d * 10) / 10; }).catch(function () {
@@ -169,6 +179,7 @@
 
   /* ── Ventana: marcar tiempos ───────────────────────────────────── */
   function marcar(api) {
+    if (AU.sinc(api.audio()) === 'citas') return marcarCitas(api);
     var a = JSON.parse(JSON.stringify(api.audio() || {}));
     var s = AU.sinc(a), nombres = AU.voces(a, api.autor);
     var bloques = bloquesDe(api), firmas = bloques.map(AU.firma);
@@ -373,6 +384,296 @@
     });
   }
 
+  /* ── Ventana: marcar el inicio y el fin de cada cita (solo las citas, 6 nov 2026) ──
+     Cada cita tiene dos campos, Inicio y Fin. Se llenan con la barra espaciadora
+     mientras suena el audio (inicio, fin, y pasa a la cita siguiente), con «Ahora»,
+     o escribiendo el tiempo a mano (1:23,4). «Probar» hace sonar solo el fragmento.
+     Las citas pueden estar en cualquier orden dentro del audio. */
+  function marcarCitas(api) {
+    var a = JSON.parse(JSON.stringify(api.audio() || {}));
+    var nombres = AU.voces(a, api.autor);
+    var bloques = bloquesDe(api), firmas = bloques.map(AU.firma);
+    var al = AU.alinear(firmas, a.marcas || []);
+    var filas = firmas.map(function (f, i) {
+      var m = al[i] || {}, v = m.v != null ? +m.v : null;
+      if (f.cita && v == null) {   // sin voz elegida: la que nombra su autoría (también quien narra), o la primera de las otras voces
+        v = nombres.length > 1 ? 1 : 0;
+        var cite = bloques[i].querySelector('cite'), quien = AU.normal(cite ? cite.textContent : '');
+        var orden = nombres.map(function (x, k) { return k; }).slice(1).concat([0]);
+        for (var o = 0; o < orden.length; o++) { var n = AU.normal(nombres[orden[o]]); if (n && quien && quien.indexOf(n.split(' ')[0]) >= 0) { v = orden[o]; break; } }
+      }
+      if (v == null || v >= nombres.length) v = 0;
+      return { i: i, f: f, texto: AU.textoCita(bloques[i]), t: m.t != null ? +m.t : null, fin: m.f != null ? +m.f : null, v: v, editada: !!m.editada };
+    });
+    var citas = filas.filter(function (r) { return r.f.cita; });
+    if (!citas.length) {
+      ui().aviso('El texto no tiene citas. Agrega las citas con el botón «Cita» o elige otra sincronización.', 'error');
+      return Promise.resolve();
+    }
+    var objetivo = (function () {
+      for (var k = 0; k < citas.length; k++) {
+        if (citas[k].t == null) return { fila: citas[k], que: 'ini' };
+        if (citas[k].fin == null) return { fila: citas[k], que: 'fin' };
+      }
+      return { fila: citas[0], que: 'ini' };
+    })();
+    var cambios = false, probando = null, raf = 0;
+
+    var el = new Audio(); el.preload = 'auto'; el.src = urlDe(a, api);
+    var cuerpo = document.createElement('div');
+    cuerpo.className = 'au-mk au-mk--citas';
+    cuerpo.innerHTML =
+      (a.revisar ? '<div class="au-mk__revisar"><span>Reemplazaste el audio después de marcar. Prueba cada cita y corrige lo que se haya corrido.</span><button type="button" class="a-boton a-boton--fino" data-a="revisado">Las marcas están bien</button></div>' : '') +
+      '<div class="au-mk__reproductor">' +
+        '<button type="button" class="a-boton a-boton--fino au-mk__play" data-a="play" aria-label="Reproducir">▶</button>' +
+        '<button type="button" class="a-mini" data-a="-5" aria-label="Atrás 5 segundos">−5</button>' +
+        '<button type="button" class="a-mini" data-a="+5" aria-label="Adelante 5 segundos">+5</button>' +
+        '<input type="range" class="au-mk__rango" min="0" max="1000" step="1" value="0" aria-label="Posición del audio">' +
+        '<span class="au-mk__tiempo">0:00</span>' +
+        '<select class="au-mk__vel" aria-label="Velocidad"><option value="1">1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="2">2×</option></select>' +
+      '</div>' +
+      '<p class="ed-nota">Cada cita suena sola, de su <b>inicio</b> a su <b>fin</b>. Pon el audio y pulsa la <b>barra espaciadora</b> (o «Marcar») cuando empiece la cita y otra vez cuando termine: pasa sola a la cita siguiente. ' +
+        'También puedes escribir el tiempo en cada campo (<code>1:23,4</code> · <code>83,4</code>) o pulsar «Ahora». «Probar» hace sonar solo el fragmento.</p>' +
+      '<div class="au-mk__marcar"><button type="button" class="a-boton a-boton--primario" data-a="marcar"></button>' +
+        '<span class="au-mk__ajuste">Ajustar el campo elegido: <button type="button" class="a-mini" data-a="-0.5">−0,5</button><button type="button" class="a-mini" data-a="+0.5">+0,5</button></span></div>' +
+      '<div class="au-mk__lista" role="list">' + citas.map(filaHTML).join('') + '</div>' +
+      '<p class="au-mk__resumen ed-nota" aria-live="polite"></p>';
+    var lista = cuerpo.querySelector('.au-mk__lista'), bMarcar = cuerpo.querySelector('[data-a="marcar"]'), bPlay = cuerpo.querySelector('[data-a="play"]');
+    var rango = cuerpo.querySelector('.au-mk__rango'), tEl = cuerpo.querySelector('.au-mk__tiempo'), resumen = cuerpo.querySelector('.au-mk__resumen');
+    function d() { return isFinite(el.duration) && el.duration > 0 ? el.duration : (a.duracion || 0); }
+
+    function filaHTML(r) {
+      var n = citas.indexOf(r) + 1;
+      function campo(cual, etiqueta) {
+        return '<div class="au-mk__campo" data-campo-caja="' + cual + '">' +
+          '<span class="au-mk__etq">' + etiqueta + '</span>' +
+          '<input type="text" inputmode="decimal" spellcheck="false" autocomplete="off" placeholder="m:ss,d" data-campo="' + cual + '" data-fila="' + r.i + '"' +
+            ' aria-label="' + etiqueta + ' de la cita ' + n + '" value="' + esc(AU.tiempoFino(cual === 'ini' ? r.t : r.fin)) + '">' +
+          '<button type="button" class="a-mini au-mk__ahora" data-ahora="' + cual + '" data-fila="' + r.i + '" title="Poner el momento en que va el audio">Ahora</button>' +
+        '</div>';
+      }
+      return '<div class="au-mk__fila au-mk__fila--cita" role="listitem" data-fila="' + r.i + '">' +
+        '<div class="au-mk__cabeza"><span class="au-mk__tipo" aria-hidden="true">' + n + '</span>' +
+          '<span class="au-mk__texto">' + esc(r.texto.slice(0, 160)) + (r.texto.length > 160 ? '…' : '') + (r.editada ? ' <em class="au-mk__editada">cambió</em>' : '') + '</span>' +
+          (nombres.length > 1 ? '<select data-fila-voz="' + r.i + '" aria-label="Quién habla en la cita ' + n + '">' + nombres.map(function (nm, k) {
+            return '<option value="' + k + '"' + (r.v === k ? ' selected' : '') + '>' + esc(k ? nm : 'Narra · ' + nm) + '</option>';
+          }).join('') + '</select>' : '') +
+        '</div>' +
+        '<div class="au-mk__tramo">' + campo('ini', 'Inicio') + campo('fin', 'Fin') +
+          '<span class="au-mk__largo"></span>' +
+          '<button type="button" class="a-boton a-boton--fino au-mk__probar" data-probar="' + r.i + '">▶ Probar</button>' +
+          '<button type="button" class="a-mini au-mk__borrar" data-borrar="' + r.i + '" aria-label="Borrar el inicio y el fin de la cita ' + n + '" title="Borrar los dos tiempos">×</button>' +
+        '</div>' +
+        '<p class="au-mk__error" hidden></p>' +
+      '</div>';
+    }
+    function problema(r) {
+      if (r.t != null && r.fin != null && r.fin <= r.t + 0.05) return 'El fin tiene que ir después del inicio.';
+      var du = d();
+      if (du && r.t != null && r.t > du) return 'El inicio pasa del final del audio (' + AU.tiempoFino(du) + ').';
+      if (du && r.fin != null && r.fin > du + 0.05) return 'El fin pasa del final del audio (' + AU.tiempoFino(du) + ').';
+      return '';
+    }
+    /* Pinta las filas sin rehacerlas (para no quitarle el foco a un campo) */
+    function refrescar() {
+      citas.forEach(function (r) {
+        var fx = lista.querySelector('.au-mk__fila[data-fila="' + r.i + '"]'); if (!fx) return;
+        var err = problema(r), completa = r.t != null && r.fin != null && !err;
+        fx.classList.toggle('activa', objetivo.fila === r);
+        fx.classList.toggle('sin', r.t == null && r.fin == null);
+        fx.classList.toggle('completa', completa);
+        fx.classList.toggle('invalida', !!err);
+        ['ini', 'fin'].forEach(function (cual) {
+          var inp = fx.querySelector('input[data-campo="' + cual + '"]'), caja = inp.parentNode, val = cual === 'ini' ? r.t : r.fin;
+          if (document.activeElement !== inp) { inp.value = AU.tiempoFino(val); caja.classList.remove('ilegible'); }
+          caja.classList.toggle('objetivo', objetivo.fila === r && objetivo.que === cual);
+          caja.classList.toggle('vacio', val == null);
+        });
+        fx.querySelector('.au-mk__largo').textContent = completa ? 'dura ' + AU.tiempoFino(r.fin - r.t) : '';
+        var pb = fx.querySelector('.au-mk__probar');
+        pb.disabled = !completa;
+        pb.textContent = probando === r ? '■ Detener' : '▶ Probar';
+        pb.classList.toggle('probando', probando === r);
+        fx.querySelector('.au-mk__borrar').hidden = r.t == null && r.fin == null;
+        var pe = fx.querySelector('.au-mk__error'); pe.textContent = err; pe.hidden = !err;
+      });
+      var r = objetivo.fila, n = citas.indexOf(r) + 1;
+      bMarcar.textContent = (objetivo.que === 'fin' ? 'Marcar el fin de la cita ' : 'Marcar el inicio de la cita ') + n + ' · espacio';
+      var listas = citas.filter(function (x) { return x.t != null && x.fin != null && !problema(x); }).length;
+      resumen.textContent = listas + ' de ' + citas.length + (citas.length === 1 ? ' cita con inicio y fin' : ' citas con inicio y fin');
+    }
+    function enfocarFila() {
+      var f = lista.querySelector('.au-mk__fila.activa');
+      if (f) { var lr = lista.getBoundingClientRect(), fr = f.getBoundingClientRect(); if (fr.top < lr.top || fr.bottom > lr.bottom) lista.scrollTop += fr.top - lr.top - lr.height * 0.3; }
+    }
+    function filaPorI(i) { return filas[i]; }
+    function ahora() { return Math.round((el.currentTime || 0) * 10) / 10; }
+    function poner(r, cual, t) { if (cual === 'fin') r.fin = t; else r.t = t; cambios = true; }
+
+    /* Barra espaciadora: inicio → fin → la cita siguiente */
+    function hacerMarca() {
+      var r = objetivo.fila; if (!r) return;
+      poner(r, objetivo.que, ahora());
+      var k = citas.indexOf(r);
+      if (objetivo.que === 'ini') objetivo = { fila: r, que: 'fin' };
+      else if (k < citas.length - 1) objetivo = { fila: citas[k + 1], que: 'ini' };
+      else ui().aviso('Marcaste el fin de la última cita');
+      refrescar(); enfocarFila();
+    }
+    function ajustar(delta) {
+      var r = objetivo.fila, cual = objetivo.que, val = cual === 'fin' ? r.fin : r.t;
+      if (val == null) return;
+      val = Math.max(0, Math.round((val + delta) * 10) / 10);
+      poner(r, cual, val); refrescar();
+      el.currentTime = Math.max(0, val - (cual === 'fin' ? 1.5 : 0.3));
+    }
+
+    /* Probar: suena solo el fragmento y se detiene en su fin */
+    function probar(r) {
+      if (probando === r) { detenerPrueba(); el.pause(); return; }
+      if (problema(r) || r.t == null || r.fin == null) return;
+      probando = r; el.currentTime = r.t;
+      el.play().catch(function () { probando = null; refrescar(); ui().aviso('No se pudo reproducir el audio', 'error'); });
+      vigilarPrueba(); refrescar();
+    }
+    function vigilarPrueba() {
+      cancelAnimationFrame(raf);
+      if (!probando) return;
+      if (!el.paused && el.currentTime >= probando.fin - 0.02) { el.pause(); detenerPrueba(); return; }
+      raf = requestAnimationFrame(vigilarPrueba);
+    }
+    function detenerPrueba() { cancelAnimationFrame(raf); probando = null; refrescar(); }
+
+    function pintarTiempo() {
+      var t = el.currentTime || 0, du = d();
+      tEl.textContent = AU.tiempoFino(t) + ' / ' + AU.tiempo(du);
+      if (!arr) rango.value = du ? Math.round(t / du * 1000) : 0;
+      bPlay.textContent = el.paused ? '▶' : '❚❚';
+      bPlay.setAttribute('aria-label', el.paused ? 'Reproducir' : 'Pausar');
+      lista.querySelectorAll('.au-mk__fila.suena').forEach(function (x) { x.classList.remove('suena'); });
+      if (!el.paused) citas.forEach(function (r) {
+        if (r.t != null && r.fin != null && t >= r.t && t < r.fin) { var fx = lista.querySelector('[data-fila="' + r.i + '"]'); if (fx) fx.classList.add('suena'); }
+      });
+    }
+    var arr = false;
+    el.addEventListener('timeupdate', pintarTiempo);
+    el.addEventListener('play', pintarTiempo);
+    el.addEventListener('pause', function () { pintarTiempo(); if (probando) detenerPrueba(); });
+    el.addEventListener('loadedmetadata', function () {
+      if (!a.duracion || Math.abs(a.duracion - el.duration) > 1) { a.duracion = Math.round(el.duration * 10) / 10; cambios = true; }
+      pintarTiempo(); refrescar();
+    });
+    el.addEventListener('error', function () { tEl.textContent = 'No se pudo abrir el audio'; });
+    rango.addEventListener('input', function () { arr = true; });
+    rango.addEventListener('change', function () { arr = false; if (probando) detenerPrueba(); el.currentTime = rango.value / 1000 * d(); });
+    cuerpo.querySelector('.au-mk__vel').onchange = function () { el.playbackRate = +this.value; };
+
+    /* Campos escritos a mano */
+    function leerCampo(inp, avisar) {
+      var r = filaPorI(+inp.getAttribute('data-fila')), cual = inp.getAttribute('data-campo'), v = AU.leerTiempo(inp.value);
+      if (isNaN(v)) {
+        inp.parentNode.classList.add('ilegible');
+        if (avisar) ui().aviso('No entiendo «' + inp.value + '». Escribe el tiempo así: 1:23,4 o 83,4', 'error');
+        return false;
+      }
+      inp.parentNode.classList.remove('ilegible');
+      var antes = cual === 'fin' ? r.fin : r.t;
+      if (v !== antes) poner(r, cual, v);
+      inp.value = AU.tiempoFino(v);
+      return true;
+    }
+    cuerpo.addEventListener('focusin', function (ev) {
+      var inp = ev.target.closest && ev.target.closest('input[data-campo]'); if (!inp) return;
+      objetivo = { fila: filaPorI(+inp.getAttribute('data-fila')), que: inp.getAttribute('data-campo') };
+      refrescar();
+    });
+    cuerpo.addEventListener('input', function (ev) {
+      var inp = ev.target; if (!inp.hasAttribute('data-campo')) return;
+      inp.parentNode.classList.toggle('ilegible', isNaN(AU.leerTiempo(inp.value)));
+    });
+    cuerpo.addEventListener('change', function (ev) {
+      var t = ev.target;
+      if (t.hasAttribute('data-campo')) { leerCampo(t, true); refrescar(); return; }
+      if (t.hasAttribute('data-fila-voz')) { filaPorI(+t.getAttribute('data-fila-voz')).v = +t.value; cambios = true; }
+    });
+    cuerpo.addEventListener('keydown', function (ev) {   // Enter: del inicio al fin, y del fin a la cita siguiente
+      var inp = ev.target; if (ev.key !== 'Enter' || !inp.hasAttribute || !inp.hasAttribute('data-campo')) return;
+      ev.preventDefault();
+      if (!leerCampo(inp, true)) return;
+      var r = filaPorI(+inp.getAttribute('data-fila')), k = citas.indexOf(r), sig;
+      if (inp.getAttribute('data-campo') === 'ini') sig = lista.querySelector('.au-mk__fila[data-fila="' + r.i + '"] input[data-campo="fin"]');
+      else if (citas[k + 1]) sig = lista.querySelector('.au-mk__fila[data-fila="' + citas[k + 1].i + '"] input[data-campo="ini"]');
+      refrescar();
+      if (sig) { sig.focus(); sig.select(); } else { inp.blur(); bMarcar.focus({ preventScroll: true }); }
+    });
+
+    cuerpo.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button');
+      if (b) {
+        var ac = b.getAttribute('data-a');
+        if (ac === 'play') { if (probando) detenerPrueba(); if (el.paused) el.play().catch(function () { ui().aviso('No se pudo reproducir el audio', 'error'); }); else el.pause(); return; }
+        if (ac === '-5' || ac === '+5') { if (probando) detenerPrueba(); el.currentTime = Math.max(0, el.currentTime + (+ac)); return; }
+        if (ac === 'marcar') return hacerMarca();
+        if (ac === '-0.5' || ac === '+0.5') return ajustar(+ac);
+        if (ac === 'revisado') { a.revisar = false; cambios = true; b.parentNode.remove(); return; }
+        if (b.hasAttribute('data-ahora')) {
+          var ra = filaPorI(+b.getAttribute('data-fila')), cual = b.getAttribute('data-ahora');
+          poner(ra, cual, ahora()); objetivo = { fila: ra, que: cual }; refrescar(); return;
+        }
+        if (b.hasAttribute('data-probar')) return probar(filaPorI(+b.getAttribute('data-probar')));
+        if (b.hasAttribute('data-borrar')) {
+          var rb = filaPorI(+b.getAttribute('data-borrar')); rb.t = null; rb.fin = null; cambios = true;
+          if (probando === rb) { el.pause(); detenerPrueba(); }
+          objetivo = { fila: rb, que: 'ini' }; refrescar(); return;
+        }
+        return;
+      }
+      var fila = ev.target.closest('[data-fila]');
+      if (fila && !ev.target.closest('select, input')) {
+        var rf = filaPorI(+fila.getAttribute('data-fila'));
+        if (objetivo.fila !== rf) { objetivo = { fila: rf, que: rf.t == null || rf.fin != null ? 'ini' : 'fin' }; refrescar(); }
+      }
+    });
+    function tecla(ev) {
+      if (!document.body.contains(cuerpo)) return;
+      var t = ev.target;
+      if (t.closest && t.closest('input:not([type="range"]), select, textarea')) return;
+      if (ev.key === ' ' || ev.code === 'Space') { ev.preventDefault(); hacerMarca(); return; }
+      if (ev.key === 'ArrowLeft') { ev.preventDefault(); el.currentTime = Math.max(0, el.currentTime - 5); }
+      if (ev.key === 'ArrowRight') { ev.preventDefault(); el.currentTime = el.currentTime + 5; }
+    }
+    document.addEventListener('keydown', tecla, true);
+    refrescar(); pintarTiempo();
+    setTimeout(function () { enfocarFila(); bMarcar.focus({ preventScroll: true }); }, 60);
+
+    function guardar() {
+      a.marcas = filas.map(function (r) {
+        var m = { h: r.f.h, p: r.f.p };
+        if (r.t != null) m.t = r.t;
+        if (r.f.cita && r.fin != null) m.f = r.fin;
+        if (r.f.cita && r.v) m.v = r.v;
+        return m;
+      });
+      delete a.revisar;
+      api.poner(a);
+      var malas = citas.filter(function (r) { return problema(r); }).length, faltan = citas.filter(function (r) { return r.t == null || r.fin == null; }).length;
+      if (malas) ui().aviso('Marcas guardadas. ' + malas + (malas === 1 ? ' cita tiene' : ' citas tienen') + ' un tiempo que no cuadra: no sonará hasta que lo corrijas.', 'error');
+      else if (faltan) ui().aviso('Marcas guardadas · ' + faltan + (faltan === 1 ? ' cita sigue' : ' citas siguen') + ' sin inicio o sin fin');
+      else ui().aviso('Marcas guardadas');
+    }
+    function cerrarAudio() { cancelAnimationFrame(raf); document.removeEventListener('keydown', tecla, true); el.pause(); el.removeAttribute('src'); try { el.load(); } catch (x) { /* nada */ } }
+    return ui().ventana({
+      titulo: 'Marcar tiempos · solo las citas', cuerpo: cuerpo, clase: 'a-ventana--ancha au-ventana au-ventana--marcar',
+      botones: [{ texto: 'Cancelar', valor: 'cancelar' }, { texto: 'Guardar marcas', valor: 'guardar', tipo: 'primario' }]
+    }).then(function (v) {
+      cerrarAudio();
+      if (v === 'guardar') return guardar();
+      if (v === null && cambios) {
+        return ui().confirmar('Guardar las marcas', 'Cerraste la ventana con marcas sin guardar. ¿Las guardas?', 'Guardar').then(function (si) { if (si) guardar(); });
+      }
+    });
+  }
+
   /* Aviso antes de publicar (texto para la confirmación; vacío si todo está bien) */
   function avisoPublicar(api) {
     var a = api.audio();
@@ -380,7 +681,7 @@
     var s = AU.sinc(a), r = AU.resumen(a, bloquesDe(api).map(AU.firma)), l = [];
     if (!a.duracion) l.push('no se ha podido leer la duración del audio');
     if (s === 'completa' && r.faltan) l.push(r.faltan + (r.faltan === 1 ? ' bloque no tiene' : ' bloques no tienen') + ' marca de tiempo (comparten el tiempo del anterior)');
-    if (s === 'citas' && r.citasMarcadas < r.citas) l.push((r.citas - r.citasMarcadas) + (r.citas - r.citasMarcadas === 1 ? ' cita no tiene' : ' citas no tienen') + ' su tramo marcado');
+    if (s === 'citas' && r.citasMarcadas < r.citas) l.push((r.citas - r.citasMarcadas) + (r.citas - r.citasMarcadas === 1 ? ' cita no tiene' : ' citas no tienen') + ' inicio y fin (no tendrán botón para escucharlas)');
     if (a.revisar && s !== 'no') l.push('reemplazaste el audio y no has revisado las marcas');
     return l.length ? '<br><br><strong>Audio:</strong> ' + esc(l.join('; ')) + '.' : '';
   }
