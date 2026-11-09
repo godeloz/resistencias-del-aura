@@ -4,6 +4,7 @@
            #/cuadernos       inicio, en el carrusel
            #/leer/<slug>     capítulo o apunte
            #/referentes      universo de referentes (js/referentes.js): Muro, Cuadrícula, Lista y Fichero
+           #/imprimir/<slug> versión para imprimir y PDF (js/imprimir.js, A-22)
            #/entrar          acceso del autor (fase 3)
    ════════════════════════════════════════════════════════════════════ */
 (function () {
@@ -85,6 +86,7 @@
     if (h === 'cuadernos') return pintarInicio(true);
     if (partes[0] === 'leer' && partes[1]) return pintarEntrada(partes[1]);
     if (partes[0] === 'vista' && partes[1]) return pintarEntrada(null, null, partes[1]);
+    if (partes[0] === 'imprimir' && partes[1] && RA.imprimir) return pintarImpreso(partes[1], consulta);
     if (partes[0] === 'referentes') return partes[1] === 'r' ? pintarReferentes('', partes[2] || '', consulta) : pintarReferentes(partes[1] || '', '', consulta);
     if (h === 'entrar') { location.href = 'admin/index.html'; return; }
     pintarMensaje('No encontrado', 'Esa página no existe.', false, true);
@@ -313,6 +315,27 @@
     });
   }
 
+  /* ══ IMPRIMIR (A-22) ══════════════════════════════════════════════
+     Siempre en claro: el tema del lector no cuenta para el papel. */
+  function pintarImpreso(slug, consulta) {
+    var q = new URLSearchParams(consulta || ''), vigente = true, limpiarImp = null;
+    S.app.innerHTML = '<div class="cargando"></div>';
+    var temaImp = RA.calcularTema(S.sitio.apariencia, { oscuro: false });
+    RA.aplicarTema(temaImp);
+    S.limpiar = function () { vigente = false; if (limpiarImp) limpiarImp(); aplicarTema(); };
+    RA.datos.cargarEntrada(slug).then(function (e) {
+      if (!vigente) return;
+      if (!e) return pintarMensaje('No encontrado', 'Este cuaderno no existe o todavía no se ha publicado.', false, true);
+      var lista = S.sitio.entradas, deLista = S.porSlug[e.slug] || S.porId[e.id], i = -1;
+      if (deLista && deLista.n_apunte) e.n_apunte = deLista.n_apunte;
+      for (var k = 0; k < lista.length; k++) if (lista[k].slug === e.slug) i = k;
+      limpiarImp = RA.imprimir.pintar({ raiz: S.app, e: e, sitio: S.sitio, tema: temaImp, siguiente: i >= 0 ? lista[i + 1] || null : null, consulta: q });
+    }).catch(function (err) {
+      console.error(err);
+      pintarMensaje('No se pudo cargar', 'Revisa tu conexión e inténtalo de nuevo.', true);
+    });
+  }
+
   /* ══ ENTRADA ══════════════════════════════════════════════════════ */
   function modoDe(e) {
     if (e.tipo === 'apunte') return { modo: 'scroll', fijo: true };
@@ -377,7 +400,7 @@
               '<div class="cuerpo">' + RA.limpiarHTML(e.cuerpo_html) + '</div></div></div>' +
             (origen ? '<div class="apunte__origen-envoltura"><a class="apunte__origen" href="#/leer/' + encodeURIComponent(origen.slug) + '">Del ' +
               (origen.tipo === 'capitulo' ? (origen.numero ? 'Día ' + origen.numero : 'capítulo «' + esc(origen.titulo) + '»') : 'apunte «' + esc(origen.titulo) + '»') + ' →</a></div>' : '') +
-            '<div class="final">' + finalHTML(e, sig, true) + '</div>' +
+            '<div class="final">' + finalHTML(e, sig, true, vistaId) + '</div>' +
           '</article>' + pie() + '</div>';
       } else {
         var portadilla = '<section class="portadilla" style="--pc:' + st.pc + ';' + (st.imagen
@@ -399,7 +422,7 @@
             '</div></div></section>';
         html = '<div class="pag-entrada modo-' + md.modo + (conAudio ? ' con-audio' + (md.modo === 'paginas' ? '' : ' con-audio--escritorio') : '') + '">' + barra + portadilla +
           '<article class="libro"><div class="paginas"><div class="cuerpo">' + RA.limpiarHTML(e.cuerpo_html) + '</div>' +
-            '<div class="final">' + finalHTML(e, sig, false) + '</div></div></article>' + pie() + '</div>';
+            '<div class="final">' + finalHTML(e, sig, false, vistaId) + '</div></div></article>' + pie() + '</div>';
       }
       S.app.innerHTML = html;
       var raiz = S.app.firstChild;
@@ -418,6 +441,8 @@
       }
       S.ctx = ctx;
       raiz.querySelector('.boton-aa').onclick = function () { abrirAjustes(ctx, this); };
+      var bc = raiz.querySelector('[data-compartir]');
+      if (bc) { bc.setAttribute('aria-haspopup', 'dialog'); bc.setAttribute('aria-expanded', 'false'); bc.onclick = function () { abrirCompartir(ctx, this); }; }
       var leer = raiz.querySelector('.portadilla__leer');
       if (leer) leer.onclick = function () { irAlTexto(ctx); };
       var limpiezas = [];
@@ -427,7 +452,7 @@
       if (ctx.pag) limpiezas.push(ctx.pag.destruir);
       if (RA.montarReacciones && !vistaId) limpiezas.push(RA.montarReacciones(ctx));
       if (RA.montarAudio && tieneAudio) limpiezas.push(RA.montarAudio(ctx));
-      S.limpiar = function () { limpiezas.forEach(function (f) { f(); }); cerrarAjustes(); quitarAviso(); S.ctx = null; };
+      S.limpiar = function () { limpiezas.forEach(function (f) { f(); }); if (RA.compartir) RA.compartir.cerrar(false); cerrarAjustes(); quitarAviso(); S.ctx = null; };
 
       if (restaurar != null) irAFraccion(ctx, restaurar);
       else {
@@ -456,9 +481,11 @@
     return { tc: tc, tc2: tc2, sobre: RA.lum(tc) < 0.3 ? '#FFFFFF' : pal.tinta };
   }
 
-  function finalHTML(e, sig, esApunte) {
+  function compartirActivo(vistaId) { return !vistaId && RA.compartir && RA.compartir.activo(S.sitio.apariencia); }
+  function finalHTML(e, sig, esApunte, vistaId) {
     var t = S.tema, h = '';
     h += '<p class="fin">' + (esApunte ? 'Fin del apunte' : e.numero ? 'Fin del día ' + e.numero : 'Fin del capítulo') + '</p>';
+    if (compartirActivo(vistaId)) h += RA.compartir.botonFinal(e);   // A-22: entre el fin y la franja «Sigue»
     if (sig && sig.tipo === 'apunte') {   // el siguiente es un apunte: la franja toma su ficha (color y patrón)
       var fs = RA.fichaApunte(sig, t);
       h += '<a class="siguiente siguiente--ficha" href="#/leer/' + encodeURIComponent(sig.slug) + '" style="--pc:' + fs.pc + ';background:' + fs.color + ';color:' + fs.texto + '">' +
@@ -508,6 +535,12 @@
     cap.innerHTML = '<span class="solo-lector">' + esc(letra) + '</span><span aria-hidden="true">' + esc(letra) +
       '</span><span class="capitular__b" aria-hidden="true">' + esc(letra) + '</span>';
     n.parentNode.insertBefore(cap, n);
+  }
+  RA.ponerCapitular = ponerCapitular;   // también la usa la versión para imprimir (js/imprimir.js)
+
+  /* ── Compartir (A-22): la hoja vive en js/compartir.js ── */
+  function abrirCompartir(ctx, boton) {
+    RA.compartir.abrir({ e: ctx.e, sitio: S.sitio, tema: S.tema, boton: boton });
   }
 
   /* ── Posición de lectura (fracción 0–1) ─────────────────────────── */
@@ -582,6 +615,7 @@
         '<button type="button" class="redondo" data-a="marcador" aria-pressed="' + tieneMarca + '" aria-label="' + (tieneMarca ? 'Quitar el marcador' : 'Poner un marcador aquí') + '">' + (tieneMarca ? ICONOS.marcadorLleno : ICONOS.marcador) + '</button>' +
         '<a class="redondo" href="#/" aria-label="Volver al inicio">' + ICONOS.casa + '</a>' +
         '<a class="redondo" href="#/referentes" aria-label="Referentes" title="Referentes">' + RA.iconoReferentes(20) + '</a>' +
+        (compartirActivo(ctx.vista) ? '<button type="button" class="redondo" data-a="compartir" aria-label="Compartir" title="Compartir" aria-haspopup="dialog">' + RA.compartir.ICONOS.compartir + '</button>' : '') +
       '</div>' +
       '<div><h2>Cuadernos</h2><ul class="ajustes__lista">' + lista.map(function (x) {
         return '<li><a href="#/leer/' + encodeURIComponent(x.slug) + '"' + (x.slug === e.slug ? ' aria-current="page"' : '') + '>' +
@@ -611,6 +645,11 @@
       S.prefs.tema = S.tema.oscuro ? 'claro' : 'oscuro';
       G.escribir('tema', S.prefs.tema);
       aplicarTema(); cerrarAjustes(); repintar();
+    };
+    var bcomp = p.querySelector('[data-a="compartir"]');
+    if (bcomp) bcomp.onclick = function () {
+      cerrarAjustes();
+      abrirCompartir(ctx, document.querySelector('.boton-aa'));
     };
     p.querySelector('[data-a="marcador"]').onclick = function () {
       var m = G.leer('marcadores', {});

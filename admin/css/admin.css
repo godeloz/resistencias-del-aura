@@ -779,3 +779,7 @@ body.ap-grande-abierta { overflow: hidden; }
 .ap-hn-propio input[type="color"] { width: 32px; height: 28px; padding: 0; border: 1px solid var(--a-linea); background: none; cursor: pointer; }
 .ap-hn .ap-patron { height: 64px; }
 .ap-hn .ap-dos { display: flex; }
+
+/* Apariencia → Compartir y PDF (A-22) */
+.ap-enlaces { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 10px 0 0; font-size: 13px; font-weight: 500; }
+.ap-enlaces a { color: inherit; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }

@@ -6,6 +6,7 @@
 (function () {
   'use strict';
   var RA = window.RA, esc = RA.esc, T = RA.TOKENS;
+  var REPO_GITHUB = 'godeloz/resistencias-del-aura';   // donde corre la Action que prepara los PDF (A-22)
   function A() { return RA.admin; }
   function ui() { return RA.ui; }
   RA.paginas = RA.paginas || {};
@@ -143,6 +144,17 @@
             return '<button type="button" class="ap-op ap-paleta" data-extra-op="referentes_paleta" data-valor="' + v[0] + '"' + anillo(rp === v[0]) + ' style="background:' + p.papel + ';color:' + p.tinta + '">' +
               '<span class="ap-tiras">' + p.cuadernos.concat([p.apunte]).map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') + '</span><b>' + v[1] + '</b></button>';
           }).join('') + '</div></section>';
+      // Compartir y PDF (A-22): el botón en la lectura y el texto de derechos del colofón. Todo en «extra»
+      var cm = ex.compartir === 'no' ? 'no' : 'si';
+      h += '<section class="ap-sec"><h2 class="ap-lbl">Compartir y PDF</h2>' +
+        '<h3 class="ap-lbl ap-sub">Botón «Compartir» de los cuadernos y apuntes</h3>' +
+        opRef('compartir', cm, [['si', 'Mostrar', 'al final de cada entrada y en «Aa»'], ['no', 'Ocultar']]) +
+        '<label class="a-campo">Derechos en el colofón del PDF <span class="ap-ayuda">(si lo dejas vacío: «© año ' + esc(pr.autor || 'autor') + '. Todos los derechos reservados.»)</span>' +
+          '<input type="text" data-extra-texto="pdf_derechos" maxlength="240" value="' + esc(ex.pdf_derechos || '') + '" placeholder="Por ejemplo: CC BY-NC 4.0 · puedes compartirlo citando la fuente, sin fines comerciales"></label>' +
+        '<p class="ed-nota">GitHub prepara el PDF y la imagen para WhatsApp y redes de cada entrada publicada: cada vez que subes cambios y cada hora, de 7 a.m. a 11 p.m. ' +
+          'Mientras no estén al día, el botón «Descargar PDF» abre la versión para imprimir.</p>' +
+        '<p class="ap-enlaces">' + (primera ? '<a href="../index.html#/imprimir/' + encodeURIComponent(primera.slug) + '" target="_blank" rel="noopener">Ver la versión para imprimir de «' + esc(primera.titulo) + '»</a>' : '') +
+          '<a href="https://github.com/' + REPO_GITHUB + '/actions/workflows/publicar.yml" target="_blank" rel="noopener">Actualizar ahora en GitHub ↗</a></p></section>';
       // Audio (A-13): dónde están los archivos. Se guarda en extra.audio_base. Va antes de los sellos (pintarSellos usa la última sección)
       h += '<section class="ap-sec"><h2 class="ap-lbl">Audio de las entradas</h2>' +
         '<label class="a-campo">Dirección del repositorio de audio<input type="url" data-extra-texto="audio_base" value="' + esc(ex.audio_base || '') + '" placeholder="https://tu-usuario.github.io/resistencias-del-aura-audio/" spellcheck="false"></label>' +
@@ -519,6 +531,7 @@
       ap.extra = ap.extra || {}; ap.extra[o.getAttribute('data-extra-op')] = o.getAttribute('data-valor');
       pintar(); enviar();
       if (/referentes/.test(o.getAttribute('data-extra-op')) && vista.pagina !== 'referentes') irA('referentes');
+      if (o.getAttribute('data-extra-op') === 'compartir' && primera && vista.pagina !== 'capitulo') irA('capitulo');
     });
     secc.addEventListener('click', function (ev) {
       var b = ev.target.closest('[data-campo]'); if (!b) return;

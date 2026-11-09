@@ -1,0 +1,110 @@
+# ════════════════════════════════════════════════════════════════════
+# Resistencias del aura · publicar el sitio en GitHub Pages (A-22)
+#
+# Publica el sitio y, de paso, prepara para cada entrada publicada:
+#   · el PDF en A5 (pdf/<slug>.pdf)
+#   · la página para compartir en WhatsApp y redes, con su título y su imagen (e/<slug>/)
+#
+# Corre:
+#   · cada vez que subes cambios (Push origin en GitHub Desktop)
+#   · cada hora, de 7 a. m. a 11 p. m. (hora de Medellín), pero solo publica si algo
+#     cambió en Supabase (una entrada nueva o editada, la apariencia, el orden…)
+#   · cuando lo pides: pestaña Actions → «Publicar el sitio» → Run workflow
+#
+# Este archivo va en resistencias-del-aura/.github/workflows/publicar.yml. El programa que prepara
+# los PDF está en resistencias-del-aura/_compartir/ (no se publica).
+# Requisito (una sola vez): Settings → Pages → Build and deployment → Source: «GitHub Actions».
+# Más detalle en GUIA-GITHUB.md, «PDF y vistas previas».
+# ════════════════════════════════════════════════════════════════════
+name: Publicar el sitio
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '23 12-23 * * *'   # 7:23 a. m. a 6:23 p. m. en Medellín (UTC−5)
+    - cron: '23 0-4 * * *'     # 7:23 p. m. a 11:23 p. m.
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      publicar: ${{ steps.decidir.outputs.publicar }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Copiar el sitio
+        run: |
+          mkdir _sitio
+          rsync -a --exclude '.git' --exclude '.github' --exclude '_compartir' --exclude '_sitio' ./ _sitio/
+
+      - name: Revisar si algo cambió
+        id: revisar
+        continue-on-error: true
+        run: node _compartir/generar.mjs revisar _sitio
+        env:
+          EVENTO: ${{ github.event_name }}
+
+      - name: Instalar Chromium
+        id: instalar
+        if: steps.revisar.outputs.cambio == 'si'
+        continue-on-error: true
+        working-directory: _compartir
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Preparar los PDF y las vistas previas
+        id: generar
+        if: steps.revisar.outputs.cambio == 'si' && steps.instalar.outcome == 'success'
+        continue-on-error: true
+        run: node _compartir/generar.mjs generar _sitio
+        env:
+          EVENTO: ${{ github.event_name }}
+
+      # Al subir cambios se publica siempre (aunque fallen los PDF: el sitio los ofrece
+      # para imprimir mientras tanto). En las vueltas de cada hora, solo si todo salió bien.
+      - name: Decidir
+        id: decidir
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "publicar=si" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.revisar.outputs.cambio }}" = "si" ] && [ "${{ steps.generar.outcome }}" = "success" ]; then
+            echo "publicar=si" >> "$GITHUB_OUTPUT"
+          else
+            echo "publicar=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/configure-pages@v5
+        if: steps.decidir.outputs.publicar == 'si'
+
+      - uses: actions/upload-pages-artifact@v4
+        if: steps.decidir.outputs.publicar == 'si'
+        with:
+          path: _sitio
+
+  desplegar:
+    needs: construir
+    if: needs.construir.outputs.publicar == 'si'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - id: despliegue
+        uses: actions/deploy-pages@v4

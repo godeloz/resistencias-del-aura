@@ -1265,3 +1265,48 @@ html.au-escuchando, html.au-escuchando body { overflow: hidden; }
   position: relative; left: auto; bottom: auto; transform: none; visibility: visible; transition: none;
   width: 100%; max-height: none; z-index: auto;
 }
+
+/* ── Compartir (A-22) ─────────────────────────────────────────────────
+   Píldora al final de la entrada (entre «Fin del día» y la franja «Sigue»)
+   y la hoja con las opciones. La hoja usa la misma forma que «Aa»: en el
+   celular sube desde abajo; en el computador queda centrada. */
+.compartir-fin { margin: -18px 0 0; padding: 0 20px 44px; text-align: center; }
+.boton-compartir {
+  display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 9px 18px 9px 15px;
+  border: 1.5px solid var(--texto); border-radius: 999px; background: transparent; color: var(--texto); cursor: pointer;
+  font-family: var(--f-ui); font-weight: 500; font-size: 14px; letter-spacing: .02em;
+  transition: box-shadow .15s, transform .15s;
+}
+.boton-compartir svg { flex: none; width: 18px; height: 18px; }
+.boton-compartir:hover { box-shadow: 3px 3px 0 var(--sombra); transform: translate(-1px, -1px); }
+.boton-compartir:active { box-shadow: none; transform: none; }
+.es-apunte .compartir-fin { margin-top: -22px; }
+.modo-paginas .compartir-fin { margin-top: 0; padding-bottom: 28px; }
+
+.compartir { gap: 14px; }
+@media (min-width: 721px) {
+  .compartir { top: 50%; left: 50%; right: auto; width: 400px; transform: translate(-50%, -50%); max-height: calc(100vh - 60px); }
+}
+.compartir__cab { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--linea); }
+.compartir__cab .mini { width: 40px; height: 56px; }
+.compartir__textos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.compartir__textos .antetitulo { font-size: 11px; opacity: .8; }
+.compartir__titulo { font-family: var(--f-texto); font-size: 18px; line-height: 1.2; font-style: italic; overflow-wrap: anywhere; }
+.compartir__cerrar { flex: none; align-self: flex-start; width: 40px; height: 40px; margin: -6px -10px 0 0; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.compartir__cerrar:hover { background: var(--linea); }
+.compartir__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.compartir__op {
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 50px; padding: 8px 10px; margin: 0;
+  border: 0; border-radius: 10px; background: transparent; color: inherit; text-align: left; text-decoration: none; cursor: pointer;
+  font-family: var(--f-ui); font-size: 15px; font-weight: 500;
+}
+.compartir__op:hover, .compartir__op:focus-visible { background: var(--linea); }
+.compartir__op svg { flex: none; }
+.compartir__op-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.compartir__op-t small { font-size: 12px; font-weight: 400; opacity: .7; overflow-wrap: anywhere; }
+.compartir__op-t small:empty { display: none; }
+.compartir__op.hecho svg { color: var(--tA); }
+.compartir__op[aria-busy="true"] small { opacity: .5; }
+.compartir__pdf { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--linea); }
+.compartir__pdf .compartir__op { font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .boton-compartir { transition: none; } }

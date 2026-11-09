@@ -1,0 +1,10 @@
+{
+  "name": "resistencias-del-aura-compartir",
+  "private": true,
+  "description": "PDF y vistas previas para redes de cada entrada publicada (lo usa .github/workflows/publicar.yml)",
+  "type": "module",
+  "dependencies": {
+    "pdf-lib": "1.17.1",
+    "playwright": "1.65.0"
+  }
+}
